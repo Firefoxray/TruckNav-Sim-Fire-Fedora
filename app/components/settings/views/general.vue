@@ -27,6 +27,8 @@ const languageItems = computed(() => [
     { label: t("languages.dutch"), value: "nl" as LocaleCode },
     { label: t("languages.czech"), value: "cs" as LocaleCode },
     { label: t("languages.slovak"), value: "sk" as LocaleCode },
+    { label: t("languages.romanian"), value: "ro" as LocaleCode },
+    { label: t("languages.korean"), value: "ko" as LocaleCode },
 ]);
 
 const currentLanguageLabel = computed(() => {

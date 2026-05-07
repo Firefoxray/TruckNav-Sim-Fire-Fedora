@@ -103,7 +103,9 @@
         "dutch": "Dutch",
         "english": "English",
         "german": "German",
-        "slovak": "Slovak"
+        "slovak": "Slovak",
+        "romanian": "Romanian",
+        "korean": "Korean"
     },
     "uiComponents": {
         "fuelDescription": "Shows your remaining fuel level and it pulses when running low.",

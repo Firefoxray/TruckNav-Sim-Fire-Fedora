@@ -69,6 +69,9 @@
     "settings": {
         "appFont": "App Schriftart",
         "appearance": "Aussehen",
+        "background": "Hintergrund",
+        "land": "Land",
+        "roads": "Straßen",
         "chooseLanguage": "Sprache auswählen",
         "compactTripSize": "Kompakte Reisegröße",
         "description": "App Einstellungen und Anpassung",
@@ -100,7 +103,9 @@
         "dutch": "Niederländisch",
         "english": "Englisch",
         "german": "Deutsch",
-        "slovak": "Slowakisch"
+        "slovak": "Slowakisch",
+        "romanian": "Rumänisch",
+        "korean": "Koreanisch"
     },
     "uiComponents": {
         "fuelDescription": "Zeigt deinen verbleibenden Kraftstoff an und pulsiert bei niedrigem Stand.",

@@ -69,6 +69,9 @@
     "settings": {
         "appFont": "Font aplikácie",
         "appearance": "Vzhľad",
+        "background": "Pozadia",
+        "land": "Zem",
+        "roads": "Cesty",
         "chooseLanguage": "Vyber jazyk",
         "compactTripSize": "Veľkosť kompaktnej trasy",
         "description": "Preferencie a prispôsobenie",
@@ -100,7 +103,9 @@
         "dutch": "Holandčina",
         "english": "Angličtina",
         "german": "Nemčina",
-        "slovak": "Slovenčina"
+        "slovak": "Slovenčina",
+        "romanian": "Rumunčina",
+        "korean": "Kórejčina"
     },
     "uiComponents": {
         "fuelDescription": "Ukáže zostávajúce palivo a pulzuje, keď dochádza.",

@@ -69,6 +69,9 @@
     "settings": {
         "appFont": "App-lettertype",
         "appearance": "Uiterlijk",
+        "background": "Achtergrond",
+        "land": "Land",
+        "roads": "Wegen",
         "chooseLanguage": "Taal kiezen",
         "compactTripSize": "Compacte ritgrootte",
         "description": "App-voorkeuren en aanpassingen",
@@ -100,7 +103,9 @@
         "dutch": "Nederlands",
         "english": "Engels",
         "german": "Duits",
-        "slovak": "Slowaaks"
+        "slovak": "Slowaaks",
+        "romanian": "Roemeens",
+        "korean": "Koreaans"
     },
     "uiComponents": {
         "fuelDescription": "Toont je resterende brandstofniveau en pulseert wanneer het laag is.",

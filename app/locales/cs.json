@@ -36,7 +36,7 @@
         "stepExecutable": "Pokud plugin chybí, klikni na ikonu složky a vyber umístění instalace hry:",
         "stepNetwork": "Ujisti se, že telefon a počítač jsou na stejné internetové síti.",
         "stepOpenApp": "Otevři aplikaci TruckNav nebo prohlížeč pomocí IP adresy níže.",
-        "stepRunning": "Ujisti se, že ETS2 / ATS je spuštěný na tvém počítači.",
+        "stepRunning": "Ujisti se, že ETS2/ATS je spuštěný na tvém počítači.",
         "subtitle": "Níže najdeš instrukce, jak nastavit aplikaci na svém telefonu.",
         "telemetryRunning": "Telemetrie je zapnutá.",
         "telemetryRunningSuffix": "toto okno, aby GPS zůstala aktivní.",
@@ -69,6 +69,9 @@
     "settings": {
         "appFont": "Font aplikace",
         "appearance": "Vzhled",
+        "background": "Pozadí",
+        "land": "Země",
+        "roads": "Silnice",
         "chooseLanguage": "Vyber jazyk",
         "compactTripSize": "Velikost kompaktní trasy",
         "description": "Preference a přizpůsobení",
@@ -97,10 +100,12 @@
     },
     "languages": {
         "czech": "Čeština",
-        "dutch": "Holandčina",
+        "dutch": "Nizozemština",
         "english": "Angličtina",
         "german": "Němčina",
-        "slovak": "Slovenština"
+        "slovak": "Slovenština",
+        "romanian": "Rumunština",
+        "korean": "Korejština"
     },
     "uiComponents": {
         "fuelDescription": "Ukáže zbývající palivo a pulzuje, když dochází.",
