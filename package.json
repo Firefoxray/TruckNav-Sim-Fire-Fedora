@@ -27,7 +27,7 @@
         "@turf/turf": "^7.3.1",
         "eruda": "^3.4.3",
         "maplibre-gl": "^5.14.0",
-        "nuxt": "^4.3.1",
+        "nuxt": "4.4.2",
         "nuxt-color-picker": "^1.2.8",
         "pmtiles": "^4.3.0",
         "proj4": "^2.20.2",
@@ -54,8 +54,8 @@
         "typescript": "^5.9.3"
     },
     "resolutions": {
-        "glob": "11.0.5",
         "tar": "7.5.8",
         "pmtiles": "4.3.0"
-    }
+    },
+    "overrides": {}
 }
