@@ -14,6 +14,8 @@ from tkinter import messagebox, scrolledtext
 
 ATS_APP_ID = os.environ.get("TRUCKNAV_ATS_APP_ID", "270880")
 TRUCKNAV_URL = os.environ.get("TRUCKNAV_URL", "http://127.0.0.1:3000/")
+WINDOW_CLASS = "TruckNavLinuxLauncher"
+WINDOW_TITLE = "TruckNav Linux Launcher"
 CONFIG_PATH = (
     Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
     / "trucknav-linux-launcher"
@@ -79,7 +81,7 @@ def find_repo_root() -> Path:
         pass
 
     messagebox.showerror(
-        "TruckNav Linux Launcher",
+        WINDOW_TITLE,
         "Could not detect the TruckNav-Sim repository root. Set TRUCKNAV_REPO_ROOT and try again.",
     )
     sys.exit(1)
@@ -109,12 +111,17 @@ def save_config(config: dict[str, object]) -> None:
 
 REPO_ROOT = find_repo_root()
 SCRIPT_DIR = REPO_ROOT / "scripts" / "linux"
+ICON_PATH = REPO_ROOT / "assets" / "icon-only.png"
 
 
 class Launcher(tk.Tk):
     def __init__(self) -> None:
-        super().__init__()
-        self.title("TruckNav Linux Launcher")
+        # KDE and other desktop shells can match this class with the
+        # desktop file StartupWMClass so the running taskbar entry uses the
+        # TruckNav icon instead of Tk's generic X icon.
+        super().__init__(className=WINDOW_CLASS)
+        self.title(WINDOW_TITLE)
+        self.set_window_icon()
         self.geometry("720x560")
         self.minsize(640, 480)
         self.processes: list[subprocess.Popen[str]] = []
@@ -122,7 +129,7 @@ class Launcher(tk.Tk):
         self.dark_mode = tk.BooleanVar(value=self.config_data.get("dark_mode") is True)
         self.stop_trucknav_on_close = tk.BooleanVar(value=False)
 
-        heading = tk.Label(self, text="TruckNav Linux Launcher", font=("Sans", 18, "bold"))
+        heading = tk.Label(self, text=WINDOW_TITLE, font=("Sans", 18, "bold"))
         heading.pack(pady=(14, 4))
 
         subtitle = tk.Label(
@@ -183,6 +190,13 @@ class Launcher(tk.Tk):
         self.apply_theme()
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.append_output("Use Check dependencies/status first if this is a new Fedora setup.\n")
+
+    def set_window_icon(self) -> None:
+        try:
+            self.icon_image = tk.PhotoImage(file=ICON_PATH)
+            self.iconphoto(True, self.icon_image)
+        except (OSError, tk.TclError) as exc:
+            print(f"Could not load launcher window icon from {ICON_PATH}: {exc}", file=sys.stderr)
 
     def current_theme(self) -> dict[str, str]:
         return THEMES["dark" if self.dark_mode.get() else "light"]

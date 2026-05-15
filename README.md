@@ -120,7 +120,9 @@ chmod +x scripts/install-fedora.sh
 ./scripts/install-fedora.sh
 ```
 
-The installer uses `dnf` to install the Linux helper dependencies (`nodejs`, `npm`, `git`, `protontricks`, KDE desktop helpers, `konsole`, and `python3-tkinter`), runs `npm install`, then installs desktop entries and command wrappers under `~/.local/bin`.
+The installer uses `dnf` to install the Linux helper dependencies (`nodejs`, `npm`, `git`, `protontricks`, KDE desktop helpers, `konsole`, and `python3-tkinter`), prefers `npm ci` when a lockfile is present, falls back to `npm install` when needed without leaving a tracked `package-lock.json` dirty, then installs desktop entries and command wrappers under `~/.local/bin`.
+
+If KDE/Wayland keeps showing an old launcher or taskbar icon after installation, refresh the application database with `kbuildsycoca6` or log out and back in.
 
 ### Use the GUI launcher
 

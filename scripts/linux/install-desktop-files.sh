@@ -50,6 +50,7 @@ Icon=$ICON_PATH
 Terminal=false
 Categories=Game;Utility;
 StartupNotify=true
+StartupWMClass=TruckNavLinuxLauncher
 EOF_DESKTOP
 chmod +x "$DESKTOP_DIR/trucknav-linux-launcher.desktop"
 
