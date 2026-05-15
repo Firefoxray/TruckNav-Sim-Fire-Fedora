@@ -107,6 +107,48 @@ npx nuxi dev --host 0.0.0.0
 ```
 Follow the instructions from the opened .exe to install the telemetry plugin DLLs into your game directory.
 
+## Fedora/Linux launcher for Steam/Proton
+
+TruckNav-Sim includes an additive Fedora/Linux helper for running the browser app and `TruckNavTelemetry.exe` with American Truck Simulator through Steam/Proton. The default ATS Steam app id is `270880`.
+
+### Install or repair Fedora setup
+
+From the repository root, run:
+
+```bash
+chmod +x scripts/install-fedora.sh
+./scripts/install-fedora.sh
+```
+
+The installer uses `dnf` to install the Linux helper dependencies (`nodejs`, `npm`, `git`, `protontricks`, KDE desktop helpers, `konsole`, and `python3-tkinter`), runs `npm install`, then installs desktop entries and command wrappers under `~/.local/bin`.
+
+### Use the GUI launcher
+
+After installation, open **TruckNav Linux Launcher** from your application launcher. The GUI can:
+
+- install or repair the Fedora setup,
+- launch TruckNav only,
+- launch ATS and TruckNav together,
+- stop TruckNav,
+- open TruckNav in your browser, and
+- check dependencies/status.
+
+The existing **TruckNav Sim** desktop entry still starts the TruckNav web app and telemetry helper together. Closing its terminal stops those helper processes.
+
+### Command-line helpers
+
+The GUI calls the same small scripts you can run manually:
+
+```bash
+scripts/linux/check-status.sh
+scripts/linux/launch-trucknav.sh
+scripts/linux/launch-ats-trucknav.sh
+scripts/linux/stop-trucknav.sh
+scripts/linux/install-desktop-files.sh
+```
+
+`launch-trucknav.sh` starts the Nuxt dev server and runs `electron/bin/TruckNavTelemetry.exe` through `protontricks-launch --appid 270880`. `launch-ats-trucknav.sh` additionally opens ATS with `steam steam://rungameid/270880` and attempts to stop TruckNav after ATS exits if the ATS process is detectable. Set `TRUCKNAV_ATS_APP_ID` to override the Steam app id.
+
 ## Accessing the App in Your Browser
 To open the app in your browser, click the network link shown in the terminal (the local link may have telemetry fetching issues):
 ```Bash
