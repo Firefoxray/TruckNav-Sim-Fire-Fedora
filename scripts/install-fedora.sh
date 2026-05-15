@@ -15,7 +15,18 @@ echo "Installing Fedora dependencies..."
 sudo dnf install -y nodejs npm git protontricks kde-cli-tools konsole python3 python3-tkinter curl procps-ng
 
 echo "Installing npm dependencies..."
-npm install
+if [[ -f package-lock.json ]]; then
+  echo "package-lock.json found; installing locked dependencies with npm ci..."
+  if npm ci; then
+    echo "npm ci completed successfully."
+  else
+    echo "npm ci failed; falling back to npm install. package-lock.json may be updated by npm." >&2
+    npm install
+  fi
+else
+  echo "package-lock.json not found; falling back to npm install." >&2
+  npm install
+fi
 
 echo "Installing TruckNav desktop files and launcher wrappers..."
 "$REPO_ROOT/scripts/linux/install-desktop-files.sh"

@@ -2,6 +2,7 @@
 """Small Fedora/Linux launcher GUI for TruckNav-Sim."""
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -13,6 +14,44 @@ from tkinter import messagebox, scrolledtext
 
 ATS_APP_ID = os.environ.get("TRUCKNAV_ATS_APP_ID", "270880")
 TRUCKNAV_URL = os.environ.get("TRUCKNAV_URL", "http://127.0.0.1:3000/")
+CONFIG_PATH = (
+    Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    / "trucknav-linux-launcher"
+    / "config.json"
+)
+
+THEMES = {
+    "light": {
+        "window_bg": "#f4f4f4",
+        "panel_bg": "#f4f4f4",
+        "text_fg": "#1f2328",
+        "muted_fg": "#4f5660",
+        "button_bg": "#ffffff",
+        "button_fg": "#1f2328",
+        "button_active_bg": "#e9eef6",
+        "button_active_fg": "#111827",
+        "field_bg": "#ffffff",
+        "field_fg": "#1f2328",
+        "insert_bg": "#1f2328",
+        "select_bg": "#b7d7ff",
+        "select_fg": "#000000",
+    },
+    "dark": {
+        "window_bg": "#171a21",
+        "panel_bg": "#171a21",
+        "text_fg": "#f2f5f8",
+        "muted_fg": "#b7c0cc",
+        "button_bg": "#2a2f3a",
+        "button_fg": "#f2f5f8",
+        "button_active_bg": "#3a4352",
+        "button_active_fg": "#ffffff",
+        "field_bg": "#0f131a",
+        "field_fg": "#e6edf3",
+        "insert_bg": "#e6edf3",
+        "select_bg": "#355c9a",
+        "select_fg": "#ffffff",
+    },
+}
 
 
 def find_repo_root() -> Path:
@@ -46,6 +85,28 @@ def find_repo_root() -> Path:
     sys.exit(1)
 
 
+def load_config() -> dict[str, object]:
+    try:
+        with CONFIG_PATH.open("r", encoding="utf-8") as config_file:
+            loaded = json.load(config_file)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+    if isinstance(loaded, dict):
+        return loaded
+    return {}
+
+
+def save_config(config: dict[str, object]) -> None:
+    try:
+        CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with CONFIG_PATH.open("w", encoding="utf-8") as config_file:
+            json.dump(config, config_file, indent=2)
+            config_file.write("\n")
+    except OSError as exc:
+        print(f"Could not save launcher config to {CONFIG_PATH}: {exc}", file=sys.stderr)
+
+
 REPO_ROOT = find_repo_root()
 SCRIPT_DIR = REPO_ROOT / "scripts" / "linux"
 
@@ -54,9 +115,11 @@ class Launcher(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("TruckNav Linux Launcher")
-        self.geometry("720x520")
-        self.minsize(640, 440)
+        self.geometry("720x560")
+        self.minsize(640, 480)
         self.processes: list[subprocess.Popen[str]] = []
+        self.config_data = load_config()
+        self.dark_mode = tk.BooleanVar(value=self.config_data.get("dark_mode") is True)
         self.stop_trucknav_on_close = tk.BooleanVar(value=False)
 
         heading = tk.Label(self, text="TruckNav Linux Launcher", font=("Sans", 18, "bold"))
@@ -87,18 +150,27 @@ class Launcher(tk.Tk):
         button_frame.columnconfigure(0, weight=1)
         button_frame.columnconfigure(1, weight=1)
 
-        close_options = tk.Frame(self)
-        close_options.pack(fill="x", padx=24, pady=(4, 0))
+        options_frame = tk.Frame(self)
+        options_frame.pack(fill="x", padx=24, pady=(4, 0))
         stop_on_close = tk.Checkbutton(
-            close_options,
+            options_frame,
             text="Stop TruckNav when closing launcher",
             variable=self.stop_trucknav_on_close,
             anchor="w",
         )
         stop_on_close.pack(anchor="w")
 
+        dark_mode_toggle = tk.Checkbutton(
+            options_frame,
+            text="Dark mode",
+            variable=self.dark_mode,
+            command=self.toggle_dark_mode,
+            anchor="w",
+        )
+        dark_mode_toggle.pack(anchor="w", pady=(2, 0))
+
         close_note = tk.Label(
-            close_options,
+            options_frame,
             text="Closing this launcher does not stop TruckNav unless enabled.",
             anchor="w",
             justify="left",
@@ -108,8 +180,58 @@ class Launcher(tk.Tk):
         self.output = scrolledtext.ScrolledText(self, height=14, state="disabled")
         self.output.pack(fill="both", expand=True, padx=18, pady=(8, 14))
 
+        self.apply_theme()
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.append_output("Use Check dependencies/status first if this is a new Fedora setup.\n")
+
+    def current_theme(self) -> dict[str, str]:
+        return THEMES["dark" if self.dark_mode.get() else "light"]
+
+    def apply_theme(self) -> None:
+        theme = self.current_theme()
+        self.configure(bg=theme["window_bg"])
+        for child in self.winfo_children():
+            self.apply_theme_to_widget(child, theme)
+
+    def apply_theme_to_widget(self, widget: tk.Widget, theme: dict[str, str]) -> None:
+        if isinstance(widget, tk.Button):
+            widget.configure(
+                bg=theme["button_bg"],
+                fg=theme["button_fg"],
+                activebackground=theme["button_active_bg"],
+                activeforeground=theme["button_active_fg"],
+                highlightbackground=theme["panel_bg"],
+            )
+        elif isinstance(widget, tk.Checkbutton):
+            widget.configure(
+                bg=theme["panel_bg"],
+                fg=theme["text_fg"],
+                activebackground=theme["panel_bg"],
+                activeforeground=theme["text_fg"],
+                selectcolor=theme["field_bg"],
+                highlightbackground=theme["panel_bg"],
+            )
+        elif isinstance(widget, scrolledtext.ScrolledText):
+            widget.configure(
+                bg=theme["field_bg"],
+                fg=theme["field_fg"],
+                insertbackground=theme["insert_bg"],
+                selectbackground=theme["select_bg"],
+                selectforeground=theme["select_fg"],
+                highlightbackground=theme["panel_bg"],
+            )
+        elif isinstance(widget, tk.Label):
+            widget.configure(bg=theme["panel_bg"], fg=theme["text_fg"])
+        elif isinstance(widget, tk.Frame):
+            widget.configure(bg=theme["panel_bg"], highlightbackground=theme["panel_bg"])
+
+        for child in widget.winfo_children():
+            self.apply_theme_to_widget(child, theme)
+
+    def toggle_dark_mode(self) -> None:
+        self.apply_theme()
+        self.config_data["dark_mode"] = self.dark_mode.get()
+        save_config(self.config_data)
 
     def env(self) -> dict[str, str]:
         env = os.environ.copy()

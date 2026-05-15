@@ -4,7 +4,12 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 BIN_DIR="$HOME/.local/bin"
 DESKTOP_DIR="$HOME/.local/share/applications"
+ICON_PATH="$REPO_ROOT/assets/icon-only.png"
 mkdir -p "$BIN_DIR" "$DESKTOP_DIR"
+
+if [[ ! -f "$ICON_PATH" ]]; then
+  echo "Warning: expected TruckNav icon not found at $ICON_PATH" >&2
+fi
 
 cat > "$BIN_DIR/trucknav-linux-launcher" <<EOF_WRAPPER
 #!/usr/bin/env bash
@@ -41,7 +46,7 @@ Type=Application
 Name=TruckNav Linux Launcher
 Comment=Manage TruckNav-Sim and American Truck Simulator on Linux
 Exec=$BIN_DIR/trucknav-linux-launcher
-Icon=applications-games
+Icon=$ICON_PATH
 Terminal=false
 Categories=Game;Utility;
 StartupNotify=true
@@ -55,7 +60,7 @@ Type=Application
 Name=TruckNav Sim
 Comment=Start TruckNav-Sim web app and ATS telemetry helper
 Exec=$BIN_DIR/trucknav-all
-Icon=applications-games
+Icon=$ICON_PATH
 Terminal=true
 Categories=Game;Utility;
 StartupNotify=true
