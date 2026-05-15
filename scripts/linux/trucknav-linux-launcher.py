@@ -57,6 +57,7 @@ class Launcher(tk.Tk):
         self.geometry("720x520")
         self.minsize(640, 440)
         self.processes: list[subprocess.Popen[str]] = []
+        self.stop_trucknav_on_close = tk.BooleanVar(value=False)
 
         heading = tk.Label(self, text="TruckNav Linux Launcher", font=("Sans", 18, "bold"))
         heading.pack(pady=(14, 4))
@@ -85,6 +86,24 @@ class Launcher(tk.Tk):
             button.grid(row=index // 2, column=index % 2, sticky="ew", padx=6, pady=6)
         button_frame.columnconfigure(0, weight=1)
         button_frame.columnconfigure(1, weight=1)
+
+        close_options = tk.Frame(self)
+        close_options.pack(fill="x", padx=24, pady=(4, 0))
+        stop_on_close = tk.Checkbutton(
+            close_options,
+            text="Stop TruckNav when closing launcher",
+            variable=self.stop_trucknav_on_close,
+            anchor="w",
+        )
+        stop_on_close.pack(anchor="w")
+
+        close_note = tk.Label(
+            close_options,
+            text="Closing this launcher does not stop TruckNav unless enabled.",
+            anchor="w",
+            justify="left",
+        )
+        close_note.pack(fill="x", pady=(2, 0))
 
         self.output = scrolledtext.ScrolledText(self, height=14, state="disabled")
         self.output.pack(fill="both", expand=True, padx=18, pady=(8, 14))
@@ -181,7 +200,37 @@ class Launcher(tk.Tk):
         self.append_output(f"Opening {TRUCKNAV_URL}\n")
         webbrowser.open(TRUCKNAV_URL)
 
+    def stop_trucknav_before_close(self) -> None:
+        stop_script = SCRIPT_DIR / "stop-trucknav.sh"
+        if not stop_script.is_file():
+            messagebox.showerror("Missing script", f"Could not find {stop_script}")
+            return
+
+        self.append_output("\nClosing launcher: stopping TruckNav web app and telemetry only. Steam/ATS will not be stopped.\n")
+        result = subprocess.run(
+            [str(stop_script)],
+            cwd=REPO_ROOT,
+            env=self.env(),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
+        )
+        self.append_output(result.stdout or "")
+        if result.returncode != 0:
+            messagebox.showerror(
+                "TruckNav stop failed",
+                f"stop-trucknav.sh exited with status {result.returncode}. See output for details.",
+            )
+
     def on_close(self) -> None:
+        if self.stop_trucknav_on_close.get():
+            self.stop_trucknav_before_close()
+        else:
+            message = "Closing launcher: leaving TruckNav running. Use Stop TruckNav to stop the web app and telemetry.\n"
+            self.append_output(message)
+            print(message, end="")
+
         for process in list(self.processes):
             if process.poll() is None:
                 process.terminate()
