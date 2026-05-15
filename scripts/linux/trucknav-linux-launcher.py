@@ -14,6 +14,7 @@ from tkinter import messagebox, scrolledtext
 
 ATS_APP_ID = os.environ.get("TRUCKNAV_ATS_APP_ID", "270880")
 TRUCKNAV_URL = os.environ.get("TRUCKNAV_URL", "http://127.0.0.1:3000/")
+SIGPIPE_EXIT_CODE = 141
 WINDOW_CLASS = "TruckNavLinuxLauncher"
 WINDOW_TITLE = "TruckNav Linux Launcher"
 CONFIG_PATH = (
@@ -279,11 +280,7 @@ class Launcher(tk.Tk):
                     check=False,
                 )
                 self.append_output(result.stdout or "")
-                if result.returncode != 0:
-                    messagebox.showerror(
-                        "TruckNav command failed",
-                        f"{script_name} exited with status {result.returncode}. See output for details.",
-                    )
+                self.handle_command_result(result.returncode, show_success=True)
             else:
                 process = subprocess.Popen(
                     [str(script)],
@@ -328,9 +325,26 @@ class Launcher(tk.Tk):
         self.after(0, self.process_finished, process, return_code)
 
     def process_finished(self, process: subprocess.Popen[str], return_code: int) -> None:
-        self.append_output(f"Command exited with status {return_code}.\n")
+        self.handle_command_result(return_code, show_success=False)
         if process in self.processes:
             self.processes.remove(process)
+
+    def handle_command_result(self, return_code: int, show_success: bool) -> None:
+        if return_code == 0:
+            if show_success:
+                self.append_output("Done.\n")
+            return
+
+        if return_code == SIGPIPE_EXIT_CODE:
+            if show_success:
+                self.append_output("Done.\n")
+            return
+
+        self.append_output(f"Command failed with exit code {return_code}. Check the output above.\n")
+        messagebox.showerror(
+            "TruckNav command failed",
+            f"Command failed with exit code {return_code}. Check the output above.",
+        )
 
     def open_browser(self) -> None:
         self.append_output(f"Opening {TRUCKNAV_URL}\n")
@@ -353,11 +367,7 @@ class Launcher(tk.Tk):
             check=False,
         )
         self.append_output(result.stdout or "")
-        if result.returncode != 0:
-            messagebox.showerror(
-                "TruckNav stop failed",
-                f"stop-trucknav.sh exited with status {result.returncode}. See output for details.",
-            )
+        self.handle_command_result(result.returncode, show_success=True)
 
     def on_close(self) -> None:
         if self.stop_trucknav_on_close.get():
