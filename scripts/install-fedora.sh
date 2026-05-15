@@ -33,25 +33,24 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   fi
 fi
 
-restore_lockfile_after_fallback() {
-  # npm install may rewrite package-lock.json when package.json and the
-  # lockfile are out of sync. For this installer path, that rewrite is an
-  # install side effect rather than an explicit dependency update request, so
-  # restore a tracked lockfile only when it was clean before npm install.
+restore_lockfile_after_npm_dependency_install() {
+  # npm lifecycle scripts, npm-force-resolutions, npm ci, and npm install can
+  # rewrite package-lock.json as an install side effect. Restore the tracked
+  # lockfile only when it was completely clean before dependency installation.
   if [[ "$in_git_repo" != true || "$lockfile_tracked" != true ]]; then
     return
   fi
 
   # Staged lockfile changes are treated as intentional user work. Do not
-  # restore in that case, even if npm install also changes the working tree.
+  # restore in that case, even if npm also changes the working tree.
   if [[ "$lockfile_has_staged_changes" == true ]]; then
-    echo "Warning: npm install may have modified package-lock.json, but staged lockfile changes were found; leaving it unchanged." >&2
+    echo "Warning: npm dependency install may have modified package-lock.json, but staged lockfile changes were found; leaving it unchanged." >&2
     return
   fi
 
   if [[ "$lockfile_clean_before_install" == true ]] && ! git diff --quiet -- package-lock.json; then
     git restore package-lock.json
-    echo "Warning: npm install modified package-lock.json; restored tracked lockfile to keep working tree clean." >&2
+    echo "npm dependency install modified package-lock.json; restored tracked lockfile to keep working tree clean." >&2
   fi
 }
 
@@ -62,12 +61,13 @@ if [[ -f package-lock.json ]]; then
   else
     echo "npm ci failed; falling back to npm install. package-lock.json will be restored if npm changes the tracked copy." >&2
     npm install
-    restore_lockfile_after_fallback
   fi
 else
   echo "package-lock.json not found; falling back to npm install." >&2
   npm install
 fi
+
+restore_lockfile_after_npm_dependency_install
 
 echo "Installing TruckNav desktop files and launcher wrappers..."
 "$REPO_ROOT/scripts/linux/install-desktop-files.sh"
