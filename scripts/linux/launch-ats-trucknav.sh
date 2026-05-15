@@ -29,21 +29,44 @@ start_web_app() {
   echo "TruckNav web app is starting. Open $TRUCKNAV_URL"
 }
 
-ats_process_matches() {
+ats_startup_process_matches() {
   if ! command -v pgrep >/dev/null 2>&1; then
     return 1
   fi
 
-  pgrep -if '(^|/)(amtrucks\.exe|amtrucks)([[:space:]]|$)' >/dev/null 2>&1 \
-    || pgrep -if 'SteamLaunch[[:space:]].*AppId=270880' >/dev/null 2>&1 \
+  pgrep -if '(^|[/\\[:space:]])(amtrucks\.exe|amtrucks)([[:space:]]|$)' >/dev/null 2>&1 \
+    || pgrep -if "SteamLaunch[[:space:]].*AppId=${TRUCKNAV_ATS_APP_ID}" >/dev/null 2>&1 \
     || pgrep -if 'Proton[[:space:]].*waitforexitandrun.*amtrucks\.exe' >/dev/null 2>&1 \
     || pgrep -if 'waitforexitandrun.*amtrucks\.exe' >/dev/null 2>&1
+}
+
+ats_real_process_lines() {
+  ps -eo pid=,comm=,args= | while read -r pid comm args; do
+    [[ -n "${pid:-}" ]] || continue
+
+    # Steam/Proton launch helpers can keep amtrucks.exe in their command line
+    # after the actual game has exited. Never count them as the live game.
+    if [[ "$args" =~ SteamLaunch[[:space:]].*AppId=${TRUCKNAV_ATS_APP_ID} ]] \
+      || [[ "$args" =~ waitforexitandrun.*amtrucks\.exe ]]; then
+      continue
+    fi
+
+    if [[ "$comm" =~ ^amtrucks(\.exe)?$ ]] \
+      || [[ "$args" =~ (^|[/\\[:space:]])amtrucks(\.exe)?([[:space:]]|$) ]] \
+      || [[ "$args" =~ [A-Za-z]:\\.*\\amtrucks\.exe([[:space:]]|$) ]]; then
+      printf '%s %s\n' "$pid" "$args"
+    fi
+  done
+}
+
+ats_real_process_matches() {
+  [[ -n "$(ats_real_process_lines | head -n 1)" ]]
 }
 
 wait_for_ats() {
   local detected=0
   for ((i = 1; i <= 180; i++)); do
-    if ats_process_matches; then
+    if ats_startup_process_matches; then
       detected=1
       break
     fi
@@ -69,13 +92,44 @@ start_telemetry() {
 
 monitor_ats() {
   local missing_checks=0
+  local waiting_checks=0
+  local real_process_line
 
   while true; do
-    if ats_process_matches; then
+    real_process_line="$(ats_real_process_lines | head -n 1)"
+    if [[ -n "$real_process_line" ]]; then
+      echo "ATS game process detected: $real_process_line"
+      echo "Monitoring real ATS process"
+      break
+    fi
+
+    waiting_checks=$((waiting_checks + 1))
+    if ! ats_startup_process_matches; then
+      missing_checks=$((missing_checks + 1))
+      if ((missing_checks >= 6)); then
+        echo "ATS process exited before the real game process was observed"
+        echo "Stopping TruckNav"
+        return 0
+      fi
+    else
+      missing_checks=0
+    fi
+
+    if ((waiting_checks % 12 == 0)); then
+      echo "Waiting for real ATS game process; ignoring Steam/Proton launcher wrappers"
+    fi
+    sleep 5
+  done
+
+  missing_checks=0
+  while true; do
+    if ats_real_process_matches; then
       missing_checks=0
     else
       missing_checks=$((missing_checks + 1))
-      if ((missing_checks >= 6)); then
+      if ((missing_checks >= 3)); then
+        echo "ATS process exited"
+        echo "Stopping TruckNav"
         return 0
       fi
     fi
@@ -100,7 +154,6 @@ if wait_for_ats; then
   echo "Monitoring ATS"
   monitor_ats
 
-  echo "ATS closed, stopping TruckNav"
   "$REPO_ROOT/scripts/linux/stop-trucknav.sh"
 else
   echo "ATS was not detected after launching through Steam. TruckNav web app will keep running; use Stop TruckNav when finished."
