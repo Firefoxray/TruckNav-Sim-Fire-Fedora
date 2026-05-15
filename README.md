@@ -2,6 +2,9 @@
 
 **Truck Nav** is an external GPS navigation system for Euro Truck Simulator 2 and American Truck Siulator built using Typescript. It runs as an APK, EXE or browser (perfect for a phone, tablet or second monitor) and provides real-time tracking and routing based on the in-game map.
 
+> [!NOTE]
+> This repository is a Fedora/Linux-friendly fork of TruckNav-Sim. Its main goal is making TruckNav easier to install and launch on Linux, especially Fedora, with American Truck Simulator running through Steam/Proton. It is not presented as a replacement for the original upstream project.
+
 <div align="center">
     <a href="https://discord.gg/C5BTXCF2jC">
         <img src="https://img.shields.io/badge/Discord-Join_Community-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord">
@@ -52,6 +55,155 @@ While the core navigation works, the project is far from perfect. Creating the r
 4. Install the .apk file on your tablet or phone.
 
 5. Open the **mobile app** or the **web browser on any device** and enter the IP address displayed in the PC application.
+
+# Linux/Fedora-friendly fork
+
+This section documents the Linux launcher workflow added by this fork. The original TruckNav-Sim project information, status notes, credits, and license remain important and are preserved in this README.
+
+## Linux support status
+
+- **Fedora:** Primary tested target and the confirmed installation path for this fork.
+- **Debian/Ubuntu:** Experimental/community-expected path. The manual commands below should be useful, but this path is not the primary tested target unless noted by future maintainers.
+- **Arch Linux:** Experimental/community-expected path. The manual commands below should be useful, but this path is not the primary tested target unless noted by future maintainers.
+
+The Linux launcher work is currently focused on **American Truck Simulator (ATS)** with Steam/Proton. Do not assume every Linux distribution is supported out of the box.
+
+## Fedora install - primary tested path
+
+Install the required Fedora packages first:
+
+```bash
+sudo dnf install -y nodejs npm git protontricks kde-cli-tools konsole python3 python3-tkinter curl procps-ng
+```
+
+Then clone and run the Fedora installer:
+
+```bash
+git clone https://github.com/Firefoxray/TruckNav-Sim-Fire-Fedora.git
+cd TruckNav-Sim-Fire-Fedora
+./scripts/install-fedora.sh
+```
+
+After installation, you can launch either app menu entry:
+
+- **TruckNav Linux Launcher** - the Tkinter control-panel launcher for Linux.
+- **TruckNav Sim** - the desktop entry that starts TruckNav directly.
+
+The Fedora installer handles:
+
+- Fedora dependencies through `dnf`.
+- npm dependencies.
+- desktop entries.
+- command wrappers under `~/.local/bin`.
+- a status check after setup.
+- keeping `package-lock.json` clean if npm modifies it during install.
+
+## Debian/Ubuntu install - experimental/community expected
+
+Debian/Ubuntu support is expected to be possible, but it is experimental/community-oriented unless explicitly confirmed by maintainers or testers. The Fedora installer is currently Fedora/`dnf`-focused and may not run directly on Debian or Ubuntu.
+
+Install likely required packages:
+
+```bash
+sudo apt update
+sudo apt install git nodejs npm python3 python3-tk curl procps
+```
+
+Steam may need to be installed through your distro repository, Valve's `.deb` package, or another official method depending on your distro. `protontricks` may also need to be installed separately depending on repository availability. Before using TruckNav on Debian/Ubuntu, make sure **Steam**, **ATS**, **Proton**, and **protontricks** are already working.
+
+Manual setup commands:
+
+```bash
+git clone https://github.com/Firefoxray/TruckNav-Sim-Fire-Fedora.git
+cd TruckNav-Sim-Fire-Fedora
+npm install
+./scripts/linux/install-desktop-files.sh
+./scripts/linux/check-status.sh
+python3 scripts/linux/trucknav-linux-launcher.py
+```
+
+## Arch Linux install - experimental/community expected
+
+Arch Linux support is expected to be possible, but it is experimental/community-oriented unless explicitly confirmed by maintainers or testers. Steam/Proton must already be working with ATS before using the TruckNav launcher workflow.
+
+Install likely required packages:
+
+```bash
+sudo pacman -S git nodejs npm python python-tk curl procps-ng steam
+```
+
+`protontricks` may come from the AUR depending on your setup. You may need an AUR helper or a manual AUR install for `protontricks`.
+
+Manual setup commands:
+
+```bash
+git clone https://github.com/Firefoxray/TruckNav-Sim-Fire-Fedora.git
+cd TruckNav-Sim-Fire-Fedora
+npm install
+./scripts/linux/install-desktop-files.sh
+./scripts/linux/check-status.sh
+python scripts/linux/trucknav-linux-launcher.py
+```
+
+## Linux launcher usage
+
+Open **TruckNav Linux Launcher** from your app menu, or run it manually:
+
+```bash
+python3 scripts/linux/trucknav-linux-launcher.py
+```
+
+The launcher can:
+
+- **Check dependencies/status** - runs the status helper so you can see whether required tools are available.
+- **Launch TruckNav only** - starts the TruckNav web app and telemetry helper without launching ATS.
+- **Launch ATS + TruckNav together** - starts TruckNav, launches ATS through Steam, then manages telemetry after ATS is detected.
+- **Stop TruckNav** - stops the TruckNav web app and telemetry helper.
+- **Open TruckNav in browser** - opens the local TruckNav web app URL.
+- **Toggle dark mode** - switches the launcher GUI between light and dark styling.
+- **Stop TruckNav when closing launcher** - optional checkbox that stops TruckNav when the GUI closes.
+
+Intended one-click ATS flow:
+
+1. Click **Launch ATS + TruckNav together**.
+2. TruckNav web app starts.
+3. ATS launches through Steam.
+4. Telemetry starts after ATS is detected, avoiding Steam/Proton AppID conflicts.
+5. When ATS closes, TruckNav web/telemetry processes stop cleanly.
+
+The GUI can stay open as a small control panel. Closing the launcher window does **not** stop TruckNav unless **Stop TruckNav when closing launcher** is enabled.
+
+## Manual Linux helper scripts
+
+Useful helper scripts are available if you prefer a terminal workflow or need to troubleshoot:
+
+```bash
+./scripts/linux/check-status.sh
+./scripts/linux/launch-trucknav.sh
+./scripts/linux/launch-ats-trucknav.sh
+./scripts/linux/stop-trucknav.sh
+./scripts/linux/install-desktop-files.sh
+python3 scripts/linux/trucknav-linux-launcher.py
+```
+
+- `./scripts/linux/check-status.sh` - checks expected dependencies, files, desktop entries, and running status.
+- `./scripts/linux/launch-trucknav.sh` - starts the TruckNav web app and telemetry helper.
+- `./scripts/linux/launch-ats-trucknav.sh` - starts TruckNav, launches ATS through Steam, delays telemetry startup until ATS is detected, and cleans up when ATS closes.
+- `./scripts/linux/stop-trucknav.sh` - stops TruckNav web/telemetry helper processes.
+- `./scripts/linux/install-desktop-files.sh` - installs or refreshes local desktop entries and icons.
+- `python3 scripts/linux/trucknav-linux-launcher.py` - opens the Tkinter Linux launcher GUI.
+
+The default ATS Steam app id is `270880`. Set `TRUCKNAV_ATS_APP_ID` if you need to override it.
+
+## Linux troubleshooting
+
+- If ATS does not launch, close stuck Proton/TruckNav processes and retry.
+- Telemetry intentionally starts after ATS is detected to avoid Steam/Proton AppID conflicts.
+- Do **not** casually run `npm audit fix`; it can update dependencies and break the app.
+- If the desktop/taskbar icon does not update, run `kbuildsycoca6` or log out and back in.
+- If `package-lock.json` changes during install, the Fedora installer should restore it automatically. If needed, run `git restore package-lock.json`.
+- If the GUI opens but TruckNav does not, run `./scripts/linux/check-status.sh`.
+- If Steam says ATS is running but no game window appears, stop TruckNav and retry launching ATS normally once to confirm Steam/Proton is healthy.
 
 # Instalation via nodejs
 
@@ -107,50 +259,6 @@ npx nuxi dev --host 0.0.0.0
 ```
 Follow the instructions from the opened .exe to install the telemetry plugin DLLs into your game directory.
 
-## Fedora/Linux launcher for Steam/Proton
-
-TruckNav-Sim includes an additive Fedora/Linux helper for running the browser app and `TruckNavTelemetry.exe` with American Truck Simulator through Steam/Proton. The default ATS Steam app id is `270880`.
-
-### Install or repair Fedora setup
-
-From the repository root, run:
-
-```bash
-chmod +x scripts/install-fedora.sh
-./scripts/install-fedora.sh
-```
-
-The installer uses `dnf` to install the Linux helper dependencies (`nodejs`, `npm`, `git`, `protontricks`, KDE desktop helpers, `konsole`, and `python3-tkinter`), prefers `npm ci` when a lockfile is present, falls back to `npm install` when needed without leaving a tracked `package-lock.json` dirty, then installs desktop entries and command wrappers under `~/.local/bin`.
-
-If KDE/Wayland keeps showing an old launcher or taskbar icon after installation, refresh the application database with `kbuildsycoca6` or log out and back in.
-
-### Use the GUI launcher
-
-After installation, open **TruckNav Linux Launcher** from your application launcher. The GUI can:
-
-- install or repair the Fedora setup,
-- launch TruckNav only,
-- launch ATS and TruckNav together,
-- stop TruckNav,
-- open TruckNav in your browser, and
-- check dependencies/status.
-
-The existing **TruckNav Sim** desktop entry still starts the TruckNav web app and telemetry helper together. Closing its terminal stops those helper processes.
-
-### Command-line helpers
-
-The GUI calls the same small scripts you can run manually:
-
-```bash
-scripts/linux/check-status.sh
-scripts/linux/launch-trucknav.sh
-scripts/linux/launch-ats-trucknav.sh
-scripts/linux/stop-trucknav.sh
-scripts/linux/install-desktop-files.sh
-```
-
-`launch-trucknav.sh` starts the Nuxt dev server and runs `electron/bin/TruckNavTelemetry.exe` through `protontricks-launch --appid 270880`. `launch-ats-trucknav.sh` additionally opens ATS with `steam steam://rungameid/270880` and attempts to stop TruckNav after ATS exits if the ATS process is detectable. Set `TRUCKNAV_ATS_APP_ID` to override the Steam app id.
-
 ## Accessing the App in Your Browser
 To open the app in your browser, click the network link shown in the terminal (the local link may have telemetry fetching issues):
 ```Bash
@@ -187,7 +295,17 @@ Your reports help refine the application and improve navigation accuracy.
 **Note:**  
 Reported issues will be addressed as time permits.
 
+# Future ideas
+
+- Possible Euro Truck Simulator 2 support may be explored later.
+- ETS2 support in the Linux launcher is future work, not a current promise.
+- The existing app/site may already include ETS2-related UI or assets, but this Linux launcher work is currently focused on ATS.
+
 # Credits & Acknowledgements
+
+- Original TruckNav-Sim project and upstream authors: thank you for the base application, map work, telemetry integration, and project direction preserved here.
+- Firefoxray / Fire: Fedora/Linux fork, Fedora testing, launcher workflow, and Linux integration direction.
+- OpenAI Codex: assistance implementing the Fedora/Linux launcher scripts, GUI, install flow, and documentation cleanup.
 
 ### [@truckermudgeon](https://github.com/truckermudgeon)
 Special thanks for the **['maps'](https://github.com/truckermudgeon/maps)** repository.
