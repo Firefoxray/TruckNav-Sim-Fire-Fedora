@@ -1,0 +1,69 @@
+.section-mobile-menu {
+    height: calc(100dvh - env(safe-area-inset-top));
+    padding: 8px 16px;
+
+    color: $white-font-text;
+
+    display: flex;
+    flex-direction: column;
+}
+
+.title {
+    height: 4rem;
+
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+
+    font-size: 1.8rem;
+    font-weight: 600;
+
+    .icon {
+        margin-top: 2px;
+        color: $blue-color;
+    }
+}
+
+.content {
+    flex-grow: 1;
+    width: 80%;
+    padding: 3rem 0rem 4rem 0rem;
+
+    display: flex;
+    flex-direction: column;
+    align-self: center;
+    justify-content: space-between;
+    gap: 3rem;
+
+    font-size: 1.6rem;
+}
+
+.back-btn {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.top-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2.4rem;
+}
+
+.top-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.bottom-download-button {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.progress-bar {
+    display: flex;
+    justify-self: center;
+    align-self: center;
+}

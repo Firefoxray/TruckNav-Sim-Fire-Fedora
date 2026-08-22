@@ -5,27 +5,38 @@ import { atsExpansions } from "~/data/ats/atsExpansions";
 const { settings, activeSettings, updateProfile, resetSettings } =
     useSettings();
 const { locale, setLocale, t } = useTranslations();
+const {
+    settings: desktopSettings,
+    initDesktopSettings,
+    updateDesktopSetting,
+} = useDesktopSettings();
 
 const isDlcPanelOpened = ref(false);
 
 const isMetric = computed(() => activeSettings.value.units === "metric");
+const rpcEnabled = computed(() => desktopSettings.value.rpcEnabled);
 const selectedExpansion = computed(() => {
     return settings.value.selectedGame === "ets2"
         ? ets2Expansions
         : atsExpansions;
 });
 
-const languageItems = [
-    { label: "English", value: "en" as LocaleCode },
-    { label: "Deutsch", value: "de" as LocaleCode },
-];
+const languageItems = computed(() => [
+    { label: t("languages.english"), value: "en" as LocaleCode },
+    { label: t("languages.german"), value: "de" as LocaleCode },
+    { label: t("languages.dutch"), value: "nl" as LocaleCode },
+    { label: t("languages.czech"), value: "cs" as LocaleCode },
+    { label: t("languages.slovak"), value: "sk" as LocaleCode },
+    { label: t("languages.romanian"), value: "ro" as LocaleCode },
+    { label: t("languages.korean"), value: "ko" as LocaleCode },
+]);
 
 const currentLanguageLabel = computed(() => {
-    const foundLanguage = languageItems.find((item) => {
+    const foundLanguage = languageItems.value.find((item) => {
         return item.value === locale.value;
     });
 
-    return foundLanguage ? foundLanguage.label : "English";
+    return foundLanguage ? foundLanguage.label : t("languages.english");
 });
 
 function toggleUnits() {
@@ -35,11 +46,17 @@ function toggleUnits() {
 function toggleDlcPanel() {
     isDlcPanelOpened.value = !isDlcPanelOpened.value;
 }
+
+onMounted(async () => {
+    if ((window as any).electronAPI) {
+        await initDesktopSettings();
+    }
+});
 </script>
 
 <template>
     <div>
-        <div class="option setting">
+        <div v-if="activeSettings.activeMod === 'none'" class="option setting">
             <div class="option-title">
                 <Icon name="lucide:map-plus" size="24" />
                 <p>{{ t("settings.ownedDlcs") }}</p>
@@ -102,6 +119,21 @@ function toggleDlcPanel() {
                     </span>
                 </template>
             </USelect>
+        </div>
+
+        <div class="option setting">
+            <div class="option-title">
+                <Icon name="fa6-brands:discord" size="24" />
+                <p>{{ t("desktop.discordRpc") }}</p>
+            </div>
+
+            <SegmentedControl
+                :left-option="t('settings.on')"
+                :right-option="t('settings.off')"
+                @connect="updateDesktopSetting('rpcEnabled', !rpcEnabled)"
+                size="normal"
+                :active="rpcEnabled"
+            />
         </div>
 
         <div class="small-separator"></div>

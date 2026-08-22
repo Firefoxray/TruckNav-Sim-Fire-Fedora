@@ -2,8 +2,9 @@ import {
     convertAtsToGeo,
     convertEts2ToGeo,
 } from "~/assets/utils/map/converters";
+import { getActiveMapFolder } from "~/assets/utils/map/helpers";
 import { type WorkerCityArea } from "~/assets/utils/routing/algorithm";
-import type { GameType } from "~/types";
+import { getMapFileUrl } from "~/assets/utils/shared/fileManager";
 
 // --- Types ---
 export interface ScsCityArea {
@@ -63,16 +64,19 @@ const villageData = shallowRef<GeoJsonCollection | null>(null);
 const companiesData = shallowRef<GeoJsonCollection | null>(null);
 const realCompanyModData = shallowRef<RealCompanyModFallback | null>(null);
 
-const isLoaded = ref(false);
 const optimizedCityNodes = shallowRef<WorkerCityArea[]>([]);
-const loadedGame = ref<GameType | null>(null);
+
+const loadedMapSource = ref<string | null>(null);
+const isLoaded = ref(false);
 
 export function useCityData() {
     const { settings } = useSettings();
 
     async function loadLocationData() {
-        if (loadedGame.value === settings.value.selectedGame) return;
+        const folder = getActiveMapFolder(settings.value);
+        if (loadedMapSource.value === folder) return;
 
+        isLoaded.value = false;
         scsCitiesData.value = null;
         villageData.value = null;
         companiesData.value = null;
@@ -80,19 +84,35 @@ export function useCityData() {
         optimizedCityNodes.value = [];
 
         try {
+            const citiesUrl = await getMapFileUrl(
+                folder,
+                "map-data/cities.json",
+            );
+            const companiesUrl = await getMapFileUrl(
+                folder,
+                "map-data/companies.geojson",
+            );
+            const realCompanyModUrl = await getMapFileUrl(
+                folder,
+                "map-data/RealCompaniesModVanillaMapping.json",
+            );
+
             if (settings.value.selectedGame === "ets2") {
+                const villagesUrl = await getMapFileUrl(
+                    folder,
+                    "map-data/villages.geojson",
+                );
+
                 const [
                     citiesRes,
                     villagesRes,
                     companiesRes,
                     realCompanyModRes,
                 ] = await Promise.all([
-                    fetch("/data/ets2/map-data/cities.json"),
-                    fetch("/data/ets2/map-data/villages.geojson"),
-                    fetch("/data/ets2/map-data/companies.geojson"),
-                    fetch(
-                        "/data/ets2/map-data/RealCompaniesModVanillaMapping.json",
-                    ),
+                    fetch(citiesUrl),
+                    fetch(villagesUrl),
+                    fetch(companiesUrl),
+                    fetch(realCompanyModUrl),
                 ]);
 
                 if (citiesRes.ok) scsCitiesData.value = await citiesRes.json();
@@ -102,14 +122,12 @@ export function useCityData() {
                     companiesData.value = await companiesRes.json();
                 if (realCompanyModRes.ok)
                     realCompanyModData.value = await realCompanyModRes.json();
-            } else if (settings.value.selectedGame == "ats") {
+            } else {
                 const [citiesRes, companiesRes, realCompanyModRes] =
                     await Promise.all([
-                        fetch("/data/ats/map-data/cities.json"),
-                        fetch("/data/ats/map-data/companies.geojson"),
-                        fetch(
-                            "/data/ats/map-data/RealCompaniesModVanillaMapping.json",
-                        ),
+                        fetch(citiesUrl),
+                        fetch(companiesUrl),
+                        fetch(realCompanyModUrl),
                     ]);
 
                 if (citiesRes.ok) scsCitiesData.value = await citiesRes.json();
@@ -122,10 +140,10 @@ export function useCityData() {
             optimizedCityNodes.value = getWorkerCityData() || [];
 
             isLoaded.value = true;
-            loadedGame.value = settings.value.selectedGame;
+            loadedMapSource.value = folder;
         } catch (e) {
             console.error("Failed to load map data:", e);
-            loadedGame.value = null;
+            loadedMapSource.value = null;
         }
     }
 

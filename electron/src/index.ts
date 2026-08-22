@@ -22,19 +22,30 @@ import {
     existsSync,
     mkdirSync,
     readFileSync,
-    writeFileSync,
     createWriteStream,
+    rmSync,
+    readdirSync,
 } from "fs";
 import * as dgram from "dgram";
 import * as registry from "native-reg";
 
 import { getSettings, saveSettings } from "./settingsManager";
 import type { AppSettings } from "./settingsConstants";
+import {
+    clearDiscordRpc,
+    destroyDiscordRpc,
+    initDiscordRpc,
+    setDiscordRpcEnabled,
+    updateDiscordRpc,
+} from "./discordRpc";
+import axios from "axios";
+import extract from "extract-zip";
 
 const appSettings = getSettings();
 
 let forceKeepHidden =
     appSettings.startMinimized || process.argv.includes("--hidden");
+let isQuittingForRpcCleanup = false;
 
 // Graceful handling of unhandled errors.
 unhandled();
@@ -138,6 +149,9 @@ if (!gotTheLock) {
             startTelemetryServer();
             startWebServer();
             setupContentSecurityPolicy(myCapacitorApp.getCustomURLScheme());
+            if (appSettings.rpcEnabled) {
+                await initDiscordRpc();
+            }
 
             await myCapacitorApp.init();
 
@@ -171,7 +185,22 @@ if (!gotTheLock) {
     })();
 }
 
-app.on("before-quit", function () {
+app.on("before-quit", function (event) {
+    if (!isQuittingForRpcCleanup) {
+        event.preventDefault();
+        isQuittingForRpcCleanup = true;
+        (app as any).isQuitting = true;
+        killTelemetry();
+
+        destroyDiscordRpc()
+            .catch(() => {})
+            .finally(() => {
+                app.quit();
+            });
+
+        return;
+    }
+
     (app as any).isQuitting = true;
     killTelemetry();
 });
@@ -299,15 +328,131 @@ const killTelemetry = () => {
     } catch (e) {}
 };
 
+async function checkMapExists(mapId: string) {
+    const mapFolder = path.join(app.getPath("userData"), "maps", mapId);
+    return existsSync(mapFolder);
+}
+
+async function removeMap(mapId: string) {
+    const mapFolder = path.join(app.getPath("userData"), "maps", mapId);
+    if (existsSync(mapFolder)) {
+        rmSync(mapFolder, { recursive: true, force: true });
+    }
+    return true;
+}
+
+let currentDownloadProgress = 0;
+
+async function handleMapDownload(mapId: string, url: string, event?: any) {
+    const mapsDir = path.join(app.getPath("userData"), "maps");
+    if (!existsSync(mapsDir)) mkdirSync(mapsDir, { recursive: true });
+
+    const zipPath = path.join(mapsDir, `${mapId}.zip`);
+    const extractPath = path.join(mapsDir, mapId);
+
+    try {
+        currentDownloadProgress = 0;
+        const response = await axios({
+            url,
+            method: "GET",
+            responseType: "stream",
+            headers: {
+                "User-Agent":
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept-Encoding": "identity",
+            },
+        });
+
+        const totalLength = parseInt(
+            String(response.headers["content-length"] || "0"),
+            10,
+        );
+        let downloadedBytes = 0;
+
+        const writer = createWriteStream(zipPath);
+        response.data.pipe(writer);
+
+        response.data.on("data", (chunk: any) => {
+            downloadedBytes += chunk.length;
+
+            if (totalLength > 0) {
+                currentDownloadProgress = Math.round(
+                    (downloadedBytes / totalLength) * 100,
+                );
+            } else {
+                currentDownloadProgress = -1;
+            }
+
+            if (event) {
+                event.sender.send(
+                    "map-download-progress",
+                    currentDownloadProgress,
+                );
+            }
+        });
+
+        await new Promise((resolve, reject) => {
+            writer.on("finish", resolve);
+            writer.on("error", reject);
+        });
+
+        await extract(zipPath, { dir: extractPath });
+        rmSync(zipPath, { force: true });
+        currentDownloadProgress = 0;
+        return true;
+    } catch (e) {
+        console.error("Map download failed:", e);
+        currentDownloadProgress = 0;
+        return false;
+    }
+}
+
 const currentPort = { value: 0 };
 async function startWebServer() {
     const server = express();
+
+    server.use(express.json());
+    server.use((req, res, next) => {
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        res.setHeader("Access-Control-Allow-Headers", "*");
+        res.setHeader(
+            "Access-Control-Expose-Headers",
+            "Content-Length, Content-Range",
+        );
+        if (req.method === "OPTIONS") return res.sendStatus(200);
+        next();
+    });
+
+    server.get("/api/map-status/:mapId", async (req, res) => {
+        res.json({ downloaded: await checkMapExists(req.params.mapId) });
+    });
+
+    server.get("/api/download-progress", (req, res) => {
+        res.json({ progress: currentDownloadProgress });
+    });
+
+    server.post("/api/download-map", async (req, res) => {
+        const success = await handleMapDownload(req.body.mapId, req.body.url);
+
+        res.json({ success });
+    });
+
+    server.post("/api/uninstall-map", async (req, res) => {
+        const success = await removeMap(req.body.mapId);
+        res.json({ success });
+    });
+
     currentPort.value = await getAvailablePort(8628);
     const webDir = app.isPackaged
         ? path.join(process.resourcesPath, "app.asar", "app")
         : path.join(app.getAppPath(), "app");
 
     server.use(express.static(webDir));
+
+    const mapsDir = path.join(app.getPath("userData"), "maps");
+    if (!existsSync(mapsDir)) mkdirSync(mapsDir, { recursive: true });
+    server.use("/maps", express.static(mapsDir));
 
     server.get("/*splat", (_req, res) => {
         res.sendFile(path.join(webDir, "index.html"));
@@ -363,6 +508,12 @@ ipcMain.handle(
                 openAtLogin: value,
                 path: app.getPath("exe"),
                 args: ["--hidden"],
+            });
+        }
+
+        if (key === "rpcEnabled") {
+            return setDiscordRpcEnabled(Boolean(value)).then(() => {
+                return settings;
             });
         }
 
@@ -506,6 +657,32 @@ ipcMain.handle("get-local-ip", async () => {
     });
 });
 
+ipcMain.handle("check-map", (_event, mapId: string) => {
+    return checkMapExists(mapId);
+});
+
+ipcMain.handle("uninstall-map", (_event, mapId: string) => {
+    return removeMap(mapId);
+});
+
+ipcMain.handle("download-map", async (event, { mapId, url }) => {
+    return await handleMapDownload(mapId, url, event);
+});
+
+ipcMain.handle("get-downloaded-maps", () => {
+    const mapsDir = path.join(app.getPath("userData"), "maps");
+
+    if (!existsSync(mapsDir)) return [];
+
+    try {
+        return readdirSync(mapsDir, { withFileTypes: true })
+            .filter((dirent) => dirent.isDirectory)
+            .map((dirent) => dirent.name);
+    } catch (e) {
+        return [];
+    }
+});
+
 ipcMain.on("open-external", (_event, url) => {
     shell.openExternal(url);
 });
@@ -532,4 +709,12 @@ ipcMain.on(
 
 ipcMain.on("manual-start-server", () => {
     startTelemetryServer();
+});
+
+ipcMain.on("update-discord-rpc", (_event, payload) => {
+    updateDiscordRpc(payload);
+});
+
+ipcMain.on("clear-discord-rpc", () => {
+    clearDiscordRpc();
 });
