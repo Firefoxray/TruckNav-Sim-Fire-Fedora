@@ -58,6 +58,46 @@ export async function initializeMap(
         loadPmtiles("map-data-combined", "all-data"),
     ]);
 
+    let freshAtsBounds:
+        | [[number, number], [number, number]]
+        | null = null;
+
+    if (isFreshAtsBaseMap) {
+        try {
+            const folder = getActiveMapFolder(settings.value);
+            const manifestUrl = await getMapFileUrl(
+                folder,
+                "map-data/trucknav-visual-manifest.json",
+            );
+            const response = await fetch(manifestUrl, { cache: "no-store" });
+            if (response.ok) {
+                const manifest = await response.json();
+                const bounds = manifest?.bounds;
+                if (
+                    bounds &&
+                    [bounds.minX, bounds.minY, bounds.maxX, bounds.maxY].every(
+                        Number.isFinite,
+                    )
+                ) {
+                    const width = Math.max(0.1, bounds.maxX - bounds.minX);
+                    const height = Math.max(0.1, bounds.maxY - bounds.minY);
+                    const padX = width * 0.03;
+                    const padY = height * 0.05;
+                    freshAtsBounds = [
+                        [bounds.minX - padX, bounds.minY - padY],
+                        [bounds.maxX + padX, bounds.maxY + padY],
+                    ];
+                    console.log(
+                        "Using generated ATS visual bounds:",
+                        freshAtsBounds,
+                    );
+                }
+            }
+        } catch (error) {
+            console.warn("Could not load ATS visual bounds manifest:", error);
+        }
+    }
+
     const style: StyleSpecification = {
         version: 8,
 
@@ -137,18 +177,26 @@ export async function initializeMap(
         ats: {
             container,
             style,
-            center: [0, 0],
-            zoom: 6,
+            ...(freshAtsBounds
+                ? {
+                      bounds: freshAtsBounds,
+                      fitBoundsOptions: { padding: 40 },
+                      maxBounds: freshAtsBounds,
+                  }
+                : {
+                      center: [0, 0],
+                      zoom: 6,
+                      maxBounds: [
+                          [-30, -23],
+                          [23, 25],
+                      ],
+                  }),
             minZoom: 5,
             maxZoom: 13,
             maxPitch: 60,
             fadeDuration: 0,
             attributionControl: false,
             collectResourceTiming: false,
-            maxBounds: [
-                [-30, -23], // [[west, south]
-                [23, 25], // [east, north]]
-            ],
         },
     };
 
