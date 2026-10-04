@@ -61,10 +61,10 @@ const truckNavDlcIds = new Map<number, number>([
 function encodeDlcGuard(guard: number): {
   encoded: number;
   truckNavIds: number[];
-} {
+} | null {
   const dlcs = AtsDlcGuards[guard as keyof typeof AtsDlcGuards];
   if (!dlcs) {
-    throw new Error(`cannot encode unknown ATS DLC guard ${guard}`);
+    return null;
   }
 
   const ids = [...dlcs]
@@ -195,6 +195,7 @@ let compositeDlcEdgeCount = 0;
 let roundaboutEdgeCount = 0;
 const maneuverCounts = new Map<number, number>();
 const guardCounts = new Map<number, number>();
+const skippedUnknownGuardCounts = new Map<number, number>();
 
 function fallbackLine(a: Node, b: Node): Position[] {
   return [
@@ -221,6 +222,15 @@ try {
       const vInt = uidToInt.get(v);
       if (uInt == null || vInt == null) {
         throw new Error('internal compact node mapping error');
+      }
+
+      const dlcEncoding = encodeDlcGuard(edge.dlcGuard);
+      if (dlcEncoding == null) {
+        skippedUnknownGuardCounts.set(
+          edge.dlcGuard,
+          (skippedUnknownGuardCounts.get(edge.dlcGuard) ?? 0) + 1,
+        );
+        continue;
       }
 
       let gameGeometry: Position[];
@@ -252,7 +262,7 @@ try {
       const hOut = heading(coords[0], coords[1]);
       const hIn = heading(coords.at(-2)!, coords.at(-1)!);
 
-      const { encoded: requiredDlc, truckNavIds } = encodeDlcGuard(edge.dlcGuard);
+      const { encoded: requiredDlc, truckNavIds } = dlcEncoding;
       guardCounts.set(edge.dlcGuard, (guardCounts.get(edge.dlcGuard) ?? 0) + 1);
       if (truckNavIds.includes(18)) southDakotaEdgeCount++;
       if (truckNavIds.length > 1) compositeDlcEdgeCount++;
@@ -350,11 +360,23 @@ const manifest = {
   sourceDlcGuardCounts: Object.fromEntries(
     [...guardCounts.entries()].sort((a, b) => a[0] - b[0]),
   ),
+  skippedUnknownDlcGuards: Object.fromEntries(
+    [...skippedUnknownGuardCounts.entries()].sort((a, b) => a[0] - b[0]),
+  ),
 };
 fs.writeFileSync(
   path.join(outDir, 'trucknav-graph-manifest.json'),
   JSON.stringify(manifest, null, 2),
 );
+
+if (skippedUnknownGuardCounts.size > 0) {
+  console.warn(
+    'Skipped edges with unknown/unreleased ATS DLC guards:',
+    Object.fromEntries(
+      [...skippedUnknownGuardCounts.entries()].sort((a, b) => a[0] - b[0]),
+    ),
+  );
+}
 
 console.log('');
 console.log('TruckNav graph export complete.');
