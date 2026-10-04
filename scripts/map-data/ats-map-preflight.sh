@@ -95,7 +95,7 @@ fi
 
 echo
 echo "=== Core files ==="
-for file in base.scs def.scs version.sii; do
+for file in base.scs def.scs version.scs; do
     if [[ -e "$ATS_DIR/$file" ]]; then
         printf 'FOUND   %s\n' "$file"
     else
