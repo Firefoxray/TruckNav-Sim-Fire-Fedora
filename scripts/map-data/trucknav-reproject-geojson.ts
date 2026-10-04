@@ -95,15 +95,16 @@ if (
 fs.mkdirSync(path.dirname(output), { recursive: true });
 fs.writeFileSync(output, JSON.stringify(data));
 
-console.log('TruckNav visual reprojection complete.');
-console.log(
-  JSON.stringify(
-    {
-      features: data.features.length,
-      bounds: { minX, minY, maxX, maxY },
-      projection: 'trucknav-flat-mercator-r300000',
-    },
-    null,
-    2,
-  ),
+const visualManifest = {
+  schemaVersion: 1,
+  projection: 'trucknav-flat-mercator-r300000',
+  features: data.features.length,
+  bounds: { minX, minY, maxX, maxY },
+};
+fs.writeFileSync(
+  path.join(path.dirname(output), 'trucknav-visual-manifest.json'),
+  JSON.stringify(visualManifest, null, 2),
 );
+
+console.log('TruckNav visual reprojection complete.');
+console.log(JSON.stringify(visualManifest, null, 2));
