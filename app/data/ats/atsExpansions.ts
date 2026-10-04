@@ -99,7 +99,7 @@ export const atsExpansions: Record<
     },
 
     17: {
-        name: "llinois",
+        name: "Illinois",
         imagePath: "illinois.webp",
         releaseDate: "May 14, 2026",
     },
