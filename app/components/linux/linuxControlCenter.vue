@@ -6,10 +6,15 @@ interface LinuxStatus {
         shortCommit: string;
         upstream: string | null;
         dirty: boolean;
+        changedFiles?: string[];
         ahead: number;
         behind: number;
         updateAvailable: boolean;
         fetchError?: string | null;
+    };
+    ats?: {
+        installedSteamBuildId?: string | null;
+        installedSteamLastUpdated?: string | null;
     };
     map: {
         available: boolean;
@@ -21,6 +26,8 @@ interface LinuxStatus {
         newestDlc?: string;
         southDakotaEdges?: number;
         visualFeatures?: number;
+        steamBuildId?: string | null;
+        mapUpdateAvailable?: boolean;
     };
 }
 
@@ -72,6 +79,27 @@ const mapVersionText = computed(() => {
     return status.value.map.gameVersion
         ? "ATS " + status.value.map.gameVersion
         : "ATS map ready";
+});
+
+const mapStateText = computed(() => {
+    if (!status.value?.map.available) return "Missing";
+    if (status.value.map.mapUpdateAvailable) return "Update available";
+    if (!status.value.map.steamBuildId) return "Tracking not initialized";
+    return "Current";
+});
+
+const mapStateClass = computed(() => {
+    if (!status.value?.map.available) return "warning";
+    if (status.value.map.mapUpdateAvailable) return "update";
+    if (!status.value.map.steamBuildId) return "warning";
+    return "ok";
+});
+
+const changedFilesText = computed(() => {
+    const files = status.value?.app.changedFiles || [];
+    if (!files.length) return "";
+    if (files.length <= 3) return files.join(", ");
+    return files.slice(0, 3).join(", ") + " +" + String(files.length - 3);
 });
 
 async function refreshStatus(fetchRemote = false) {
@@ -169,6 +197,13 @@ onUnmounted(() => {
                         {{ status.app.shortCommit }}
                         <template v-if="status.app.dirty"> · modified</template>
                     </span>
+                    <span
+                        v-if="status.app.dirty && changedFilesText"
+                        class="status-detail changed-files"
+                        :title="status.app.changedFiles?.join('\n')"
+                    >
+                        {{ changedFilesText }}
+                    </span>
                 </template>
                 <span v-else class="status-detail">Reading repository…</span>
             </article>
@@ -177,11 +212,8 @@ onUnmounted(() => {
                 <div class="status-card-heading">
                     <Icon name="lucide:map" size="18" />
                     <span>Map data</span>
-                    <span
-                        class="status-pill"
-                        :class="status?.map.available ? 'ok' : 'warning'"
-                    >
-                        {{ status?.map.available ? "Ready" : "Missing" }}
+                    <span class="status-pill" :class="mapStateClass">
+                        {{ mapStateText }}
                     </span>
                 </div>
 
@@ -198,6 +230,15 @@ onUnmounted(() => {
                     </template>
                     <template v-else>
                         Rebuild from the installed ATS game files.
+                    </template>
+                </span>
+                <span
+                    v-if="status?.ats?.installedSteamBuildId"
+                    class="status-detail"
+                >
+                    ATS build {{ status.ats.installedSteamBuildId }}
+                    <template v-if="status.map.steamBuildId">
+                        · map build {{ status.map.steamBuildId }}
                     </template>
                 </span>
             </article>
@@ -253,7 +294,11 @@ onUnmounted(() => {
                     "
                     size="18"
                 />
-                Rebuild ATS Map
+                {{
+                    status?.map.mapUpdateAvailable
+                        ? "Update ATS Map"
+                        : "Rebuild ATS Map"
+                }}
             </button>
         </div>
 
