@@ -126,6 +126,10 @@ class Launcher(tk.Tk):
         self.minsize(640, 480)
         self.processes: list[subprocess.Popen[str]] = []
         self.config_data = load_config()
+        self.active_channel = str(
+            self.config_data.get("active_channel")
+            or ("stable" if REPO_ROOT.name == "TruckNav-Sim-Fire-Fedora" else "testing")
+        )
         self.dark_mode = tk.BooleanVar(value=self.config_data.get("dark_mode") is True)
         self.stop_trucknav_on_close = tk.BooleanVar(value=False)
 
@@ -134,10 +138,35 @@ class Launcher(tk.Tk):
 
         subtitle = tk.Label(
             self,
-            text=f"Repo: {REPO_ROOT}\nATS Steam app id: {ATS_APP_ID}",
+            text=(
+                f"Channel: {self.active_channel.title()}\n"
+                f"Repo: {REPO_ROOT}\n"
+                f"ATS Steam app id: {ATS_APP_ID}"
+            ),
             justify="center",
         )
-        subtitle.pack(pady=(0, 10))
+        subtitle.pack(pady=(0, 8))
+
+        channel_frame = tk.Frame(self)
+        channel_frame.pack(fill="x", padx=24, pady=(0, 6))
+
+        tk.Label(
+            channel_frame,
+            text="Launcher channel:",
+            anchor="w",
+        ).pack(side="left")
+
+        for channel in ("stable", "testing"):
+            repo = self.channel_repo(channel)
+            button = tk.Button(
+                channel_frame,
+                text=channel.title(),
+                command=lambda ch=channel: self.switch_channel(ch),
+                padx=12,
+            )
+            if not repo or channel == self.active_channel:
+                button.configure(state="disabled")
+            button.pack(side="right", padx=(6, 0))
 
         button_frame = tk.Frame(self)
         button_frame.pack(fill="x", padx=18)
@@ -189,7 +218,74 @@ class Launcher(tk.Tk):
 
         self.apply_theme()
         self.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.append_output(
+            f"Active channel: {self.active_channel.title()} ({REPO_ROOT})\n"
+        )
         self.append_output("Use Check dependencies/status first if this is a new Fedora setup.\n")
+
+    def channel_repo(self, channel: str) -> Path | None:
+        channels = self.config_data.get("channels")
+        if not isinstance(channels, dict):
+            return None
+
+        raw_path = channels.get(channel)
+        if not isinstance(raw_path, str) or not raw_path:
+            return None
+
+        candidate = Path(raw_path).expanduser().resolve()
+        if not (candidate / "package.json").is_file():
+            return None
+        return candidate
+
+    def switch_channel(self, channel: str) -> None:
+        repo = self.channel_repo(channel)
+        if repo is None:
+            messagebox.showerror(
+                WINDOW_TITLE,
+                f"No valid repository is registered for the {channel.title()} channel.",
+            )
+            return
+
+        if channel == self.active_channel:
+            return
+
+        self.config_data["active_channel"] = channel
+        save_config(self.config_data)
+
+        wrapper = Path.home() / ".local" / "bin" / "trucknav-linux-launcher"
+        self.append_output(
+            f"Switching active channel to {channel}: {repo}\n"
+        )
+        messagebox.showinfo(
+            WINDOW_TITLE,
+            (
+                f"Switching TruckNav Linux to {channel.title()}.\n\n"
+                f"{repo}\n\n"
+                "The launcher will reopen using that checkout."
+            ),
+        )
+
+        if wrapper.is_file():
+            try:
+                subprocess.Popen(
+                    [str(wrapper)],
+                    env=os.environ.copy(),
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+            except OSError as exc:
+                messagebox.showerror(
+                    WINDOW_TITLE,
+                    f"Channel changed, but the launcher could not be reopened: {exc}",
+                )
+        else:
+            messagebox.showinfo(
+                WINDOW_TITLE,
+                "Channel changed. Close and reopen TruckNav Linux Launcher.",
+            )
+
+        self.destroy()
 
     def set_window_icon(self) -> None:
         try:
