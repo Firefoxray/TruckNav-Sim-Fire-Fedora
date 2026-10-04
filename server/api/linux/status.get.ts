@@ -114,6 +114,65 @@ export default defineEventHandler((event) => {
                 error: "Map manifest could not be read",
             };
         }
+    } else {
+        const versionPath = join(
+            repoRoot,
+            "build",
+            "map-data",
+            "ats-parser",
+            "usa-version.txt",
+        );
+        const graphManifestPath = join(
+            repoRoot,
+            "public",
+            "data",
+            "ats",
+            "roadnetwork",
+            "trucknav-graph-manifest.json",
+        );
+        const visualManifestPath = join(
+            repoRoot,
+            "public",
+            "data",
+            "ats",
+            "map-data",
+            "trucknav-visual-manifest.json",
+        );
+
+        if (
+            existsSync(versionPath) &&
+            existsSync(graphManifestPath) &&
+            existsSync(visualManifestPath)
+        ) {
+            try {
+                const graphManifest = JSON.parse(
+                    readFileSync(graphManifestPath, "utf8"),
+                );
+                const visualManifest = JSON.parse(
+                    readFileSync(visualManifestPath, "utf8"),
+                );
+                map = {
+                    available: true,
+                    game: "ats",
+                    gameVersion: readFileSync(versionPath, "utf8").trim(),
+                    projection:
+                        graphManifest?.source?.projection ||
+                        visualManifest?.projection,
+                    supportedDlcs: 18,
+                    newestDlc: "South Dakota",
+                    southDakotaEdges:
+                        graphManifest?.dlcEncoding?.southDakotaEdges,
+                    visualFeatures: visualManifest?.features,
+                    bounds: visualManifest?.bounds,
+                    generatedAt: null,
+                };
+            } catch {
+                map = {
+                    available: false,
+                    error: "Generated ATS map metadata could not be read",
+                };
+            }
+        }
     }
 
     return {
