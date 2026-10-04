@@ -6,6 +6,28 @@ import type { GameType } from "~/types";
 // Increased size to handle Directed Edges instead of Nodes
 const MAX_EDGES = 4000000;
 
+// New generated maps can encode multiple required DLCs in the existing
+// Float32 graph slot. Legacy maps still store a single TruckNav DLC id.
+// Values >= DLC_MASK_FLAG are FLAG + bitmask, where bit 0 = DLC id 1.
+const DLC_MASK_FLAG = 1 << 20;
+
+function ownsRequiredDlcs(encoded: number, ownedDlcs: number[]): boolean {
+    if (!encoded) return true;
+
+    if (encoded < DLC_MASK_FLAG) {
+        return ownedDlcs.includes(encoded);
+    }
+
+    const mask = encoded - DLC_MASK_FLAG;
+    for (let dlcId = 1; dlcId <= 18; dlcId++) {
+        const bit = 1 << (dlcId - 1);
+        if ((mask & bit) !== 0 && !ownedDlcs.includes(dlcId)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 const cache_costs = new Float64Array(MAX_EDGES);
 const cache_previous = new Int32Array(MAX_EDGES);
 const cache_visited = new Uint8Array(MAX_EDGES);
@@ -209,8 +231,8 @@ export const calculateRoute = (
             const neighborEdgeId = edge.edgeId;
 
             // DLC Check
-            const dlcId = edge.requiredDlc || 0;
-            if (dlcId !== 0 && !ownedDlcs.includes(dlcId)) continue;
+            const dlcRequirement = edge.requiredDlc || 0;
+            if (!ownsRequiredDlcs(dlcRequirement, ownedDlcs)) continue;
 
             if (cache_visited[neighborEdgeId] === 1) continue;
 
