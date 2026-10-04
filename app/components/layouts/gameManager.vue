@@ -9,7 +9,12 @@ import {
 
 const { selectedGame } = useGameSelection();
 const { updateProfile, activeSettings } = useSettings();
-const { isMobile, isElectron, isLinuxLocalWeb } = usePlatform();
+const {
+    isMobile,
+    isElectron,
+    isLinuxWeb,
+    isLinuxLocalWeb,
+} = usePlatform();
 const { t } = useTranslations();
 
 const emit = defineEmits(["connected", "goBack"]);
@@ -133,16 +138,19 @@ function toggleModPanel() {
             </div>
             <Icon
                 class="icon"
-                :name="isLinuxLocalWeb ? 'lucide:truck' : 'lucide:cast'"
+                :name="isLinuxWeb ? 'lucide:truck' : 'lucide:cast'"
                 size="20"
             />
             <span>{{
-                isLinuxLocalWeb ? "TruckNav Linux" : t("mobile.pairWithComputer")
+                isLinuxWeb ? "TruckNav Linux" : t("mobile.pairWithComputer")
             }}</span>
         </div>
 
         <div class="content" :class="{ 'linux-content': isLinuxLocalWeb }">
-            <LinuxControlCenter v-if="isLinuxLocalWeb" />
+            <LinuxControlCenter
+                v-if="isLinuxWeb"
+                :local-actions="isLinuxLocalWeb"
+            />
 
             <div class="top-content">
                 <GameSelection v-model="selectedGame" :width="150" />
