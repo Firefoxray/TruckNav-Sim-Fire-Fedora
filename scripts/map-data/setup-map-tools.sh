@@ -24,6 +24,17 @@ NODE_URL="https://nodejs.org/dist/v${NODE_VERSION}/$NODE_BASENAME.tar.xz"
 
 mkdir -p "$TOOLS_ROOT"
 
+missing_build_tools=()
+for cmd in git python3 make gcc g++; do
+    command -v "$cmd" >/dev/null 2>&1 || missing_build_tools+=("$cmd")
+done
+if ((${#missing_build_tools[@]})); then
+    echo "Missing native build tools: ${missing_build_tools[*]}" >&2
+    echo "On Fedora, install them with:" >&2
+    echo "  sudo dnf install git python3 make gcc gcc-c++" >&2
+    exit 4
+fi
+
 download() {
     local url="$1"
     local output="$2"
@@ -55,7 +66,7 @@ if [[ ! -d "$MAPS_DIR/.git" ]]; then
 fi
 
 echo "Checking out pinned map tooling revision..."
-git -C "$MAPS_DIR" fetch origin "$MAPS_REVISION"
+git -C "$MAPS_DIR" fetch origin main
 git -C "$MAPS_DIR" checkout --detach "$MAPS_REVISION"
 git -C "$MAPS_DIR" reset --hard "$MAPS_REVISION"
 
