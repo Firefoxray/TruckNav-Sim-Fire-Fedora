@@ -84,6 +84,7 @@ print(f"geometry points:     {manifest['graph']['geometryPoints']:,}")
 print(f"South Dakota edges:  {sd_edges:,}")
 print(f"composite DLC edges: {manifest['dlcEncoding']['compositeEdges']:,}")
 print(f"roundabout edges:    {manifest['navigation']['roundaboutEdges']:,}")
+print(f"skipped guards:       {manifest.get('skippedUnknownDlcGuards', {})}")
 print("TruckNav binary sanity check: OK")
 PY
 
