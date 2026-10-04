@@ -13,23 +13,34 @@ export const usePlatform = () => {
         if (platform === "android" || platform === "ios") isMobile.value = true;
     }
 
-    const isLinuxLocalWeb = computed(() => {
+    const isLinuxWeb = computed(() => {
         if (!isWeb.value || typeof window === "undefined") return false;
-
-        const isLinuxDesktop =
+        return (
             /Linux/i.test(navigator.userAgent) &&
-            !/Android/i.test(navigator.userAgent);
-        const host = window.location.hostname;
-        const isLocalHost =
-            host === "127.0.0.1" || host === "localhost" || host === "::1";
-
-        return isLinuxDesktop && isLocalHost;
+            !/Android/i.test(navigator.userAgent)
+        );
     });
+
+    const isLocalWebHost = computed(() => {
+        if (!isWeb.value || typeof window === "undefined") return false;
+        const host = window.location.hostname;
+        return (
+            host === "127.0.0.1" ||
+            host === "localhost" ||
+            host === "::1"
+        );
+    });
+
+    const isLinuxLocalWeb = computed(
+        () => isLinuxWeb.value && isLocalWebHost.value,
+    );
 
     return {
         isElectron,
         isMobile,
         isWeb,
+        isLinuxWeb,
+        isLocalWebHost,
         isLinuxLocalWeb,
     };
 };
