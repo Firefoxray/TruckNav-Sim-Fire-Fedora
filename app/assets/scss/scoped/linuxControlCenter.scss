@@ -185,3 +185,11 @@
         grid-template-columns: 1fr;
     }
 }
+
+
+.changed-files {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #fde68a;
+}
