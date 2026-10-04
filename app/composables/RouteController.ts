@@ -383,6 +383,69 @@ export const useRouteController = (
         });
     }
 
+    function findBestWaypointInsertionIndex(
+        clickCoords: [number, number],
+    ): number {
+        if (
+            !isRouteActive.value ||
+            !currentRoutePath.value ||
+            currentRoutePath.value.length < 2 ||
+            waypointList.value.length == 0
+        ) {
+            return waypointList.value.length;
+        }
+
+        const routePoints = currentRoutePath.value;
+
+        const markedPositionsOnRoute: number[] = [];
+        let searchStart = 0;
+
+        for (const markedCoords of waypointList.value) {
+            let closestPointIndex = searchStart;
+            let shortestDistSq = Infinity;
+
+            for (let i = searchStart; i < routePoints.length; i++) {
+                const distSq = getSquaredDist(markedCoords, routePoints[i]!);
+                if (distSq < shortestDistSq) {
+                    shortestDistSq = distSq;
+                    closestPointIndex = i;
+                }
+            }
+
+            markedPositionsOnRoute.push(closestPointIndex);
+            searchStart = closestPointIndex;
+        }
+
+        let clickedRoadPieceIndex = 0;
+        let shortestClickDistSq = Infinity;
+
+        for (let i = 0; i < routePoints.length - 1; i++) {
+            const distSq = getSqDistToSegment(
+                clickCoords,
+                routePoints[i]!,
+                routePoints[i + 1]!,
+            );
+
+            if (distSq < shortestClickDistSq) {
+                shortestClickDistSq = distSq;
+                clickedRoadPieceIndex = i;
+            }
+        }
+
+        for (
+            let markedIdx = 0;
+            markedIdx < markedPositionsOnRoute.length;
+            markedIdx++
+        ) {
+            const markedPosition = markedPositionsOnRoute[markedIdx]!;
+            if (clickedRoadPieceIndex < markedPosition) {
+                return markedIdx;
+            }
+        }
+
+        return waypointList.value.length;
+    }
+
     async function handleRouteClick(
         clickCoords: [number, number],
         truckCoords: [number, number],
@@ -1133,6 +1196,7 @@ export const useRouteController = (
         removeWaypointAtIndex,
         setupRouteLayer,
         handleMultiRouteCalculation,
+        findBestWaypointInsertionIndex,
         handleRouteClick,
         findBestStartConfiguration,
         updateRouteProgress,

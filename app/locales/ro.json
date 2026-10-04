@@ -56,7 +56,8 @@
         "externalRouteDetected": "Ruta externă detectată: Setați punctul de navigare",
         "followRoute": "Continuați traseul",
         "tappingDisabled": "Apăsare dezactivată",
-        "tappingEnabled": "Apăsare Activată"
+        "tappingEnabled": "Apăsare Activată",
+        "addStop": "Adaugă oprire"
     },
     "mobile": {
         "pairWithComputer": "Asociați cu Calculatorul"

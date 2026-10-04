@@ -56,7 +56,8 @@
         "externalRouteDetected": "Externá trasa detekovaná: Nastavený waypoint",
         "followRoute": "Sledovať cestu",
         "tappingDisabled": "Dotyk vypnutý",
-        "tappingEnabled": "Dotyk zapnutý"
+        "tappingEnabled": "Dotyk zapnutý",
+        "addStop": "Pridať zastávku"
     },
     "mobile": {
         "pairWithComputer": "Spárovať s počítačom"

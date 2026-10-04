@@ -56,7 +56,8 @@
         "externalRouteDetected": "External Route Detected: Set Waypoint",
         "followRoute": "Follow Route",
         "tappingDisabled": "Tapping Disabled",
-        "tappingEnabled": "Tapping Enabled"
+        "tappingEnabled": "Tapping Enabled",
+        "addStop": "Add Stop"
     },
     "mobile": {
         "pairWithComputer": "Pair with Computer"

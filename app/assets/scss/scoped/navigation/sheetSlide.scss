@@ -144,13 +144,17 @@ $compact-bar-height: 35px;
 
 .full-stats {
     display: flex;
-    justify-content: space-around;
+    justify-content: space-between;
     margin-bottom: 25px;
 
     .stat-block {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
+
+        .route-distance {
+            margin-top: -6px;
+        }
 
         .icon-eta {
             color: var(--theme-color);

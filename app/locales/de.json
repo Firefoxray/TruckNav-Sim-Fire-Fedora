@@ -56,7 +56,8 @@
         "externalRouteDetected": "Externe Route erkannt: Wegpunkt setzen",
         "followRoute": "Route folgen",
         "tappingDisabled": "Tippen deaktiviert",
-        "tappingEnabled": "Tippen aktiviert"
+        "tappingEnabled": "Tippen aktiviert",
+        "addStop": "Stopp hinzufügen"
     },
     "mobile": {
         "pairWithComputer": "Mit Computer koppeln"

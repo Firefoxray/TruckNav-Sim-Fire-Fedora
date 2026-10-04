@@ -56,7 +56,8 @@
         "externalRouteDetected": "외부 경로 감지: 경로 업데이트",
         "followRoute": "경로 따라가기",
         "tappingDisabled": "터치 비활성화",
-        "tappingEnabled": "터치 활성화"
+        "tappingEnabled": "터치 활성화",
+        "addStop": "경유지 추가"
     },
     "mobile": {
         "pairWithComputer": "컴퓨터와 연결"

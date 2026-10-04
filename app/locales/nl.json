@@ -56,7 +56,8 @@
         "externalRouteDetected": "Externe route gedetecteerd: waypoint instellen",
         "followRoute": "Route volgen",
         "tappingDisabled": "Tikken uitgeschakeld",
-        "tappingEnabled": "Tikken ingeschakeld"
+        "tappingEnabled": "Tikken ingeschakeld",
+        "addStop": "Stop toevoegen"
     },
     "mobile": {
         "pairWithComputer": "Koppelen met computer"

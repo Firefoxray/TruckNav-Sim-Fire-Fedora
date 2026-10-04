@@ -17,6 +17,7 @@ const mapEl = shallowRef<HTMLElement | null>(null);
 const map = shallowRef<maplibregl.Map | null>(null);
 const isSettingsPanelOpened = ref(false);
 const isClickingEnabled = ref(true);
+const isAddingStopMode = ref(false);
 
 // UI STATE
 const isSheetHidden = ref(false);
@@ -92,6 +93,7 @@ const {
     nextTurnDistance,
     waypointList,
     removeWaypointAtIndex,
+    findBestWaypointInsertionIndex,
 } = useRouteController(map, adjacency, nodeCoords, stopNavigationMode);
 
 // Settings Controller
@@ -371,7 +373,18 @@ onMounted(async () => {
                     ? 20
                     : 19;
 
-            waypointList.value.push([e.lngLat.lng, e.lngLat.lat]);
+            const clickCoords: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+
+            if (isRouteActive.value && isAddingStopMode.value) {
+                const insertIndex = findBestWaypointInsertionIndex(clickCoords);
+                waypointList.value.splice(insertIndex, 0, clickCoords);
+
+                isAddingStopMode.value = false;
+            } else if (!isRouteActive.value) {
+                waypointList.value = [clickCoords];
+            } else {
+                waypointList.value.push(clickCoords);
+            }
 
             await handleMultiRouteCalculation(
                 truckCoords.value,
@@ -441,6 +454,14 @@ const onResetNorth = () => {
         pitch: 0,
         duration: 500,
     });
+};
+
+const toggleAddStopClicked = () => {
+    isAddingStopMode.value = !isAddingStopMode.value;
+
+    if (isAddingStopMode.value) {
+        isClickingEnabled.value = true;
+    }
 };
 
 const onToggleFullscreen = async () => {
@@ -592,6 +613,16 @@ const onCancelRoute = () => {
                                 class="icon"
                             />
                         </HudButton>
+
+                        <Transition name="fade">
+                            <HudButton
+                                class="add-stop-hud-btn"
+                                v-if="isAddingStopMode"
+                                :onClick="toggleAddStopClicked"
+                            >
+                                <Icon name="lucide:map-pin-plus" class="icon" />
+                            </HudButton>
+                        </Transition>
                     </div>
 
                     <SpeedLimit
@@ -629,6 +660,7 @@ const onCancelRoute = () => {
                             :route-eta="routeEta"
                             :speed-limit="speedLimit"
                             :truck-speed="truckSpeed"
+                            @update:add-stop-clicked="toggleAddStopClicked"
                         />
                     </Transition>
                 </div>

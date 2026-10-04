@@ -2,11 +2,12 @@
 defineProps<{
     onClick: () => void;
     isActive?: boolean;
+    type?: "text-btn";
 }>();
 </script>
 
 <template>
-    <button class="option-btn" @click.prevent="onClick">
+    <button class="option-btn" :class="type" @click.prevent="onClick">
         <slot />
     </button>
 </template>

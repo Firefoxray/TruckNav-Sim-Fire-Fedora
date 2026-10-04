@@ -24,10 +24,16 @@ const routeDistanceConverted = computed(() =>
 const emit = defineEmits<{
     (e: "update:isSheetHidden", value: boolean): void;
     (e: "update:isSheetExpanded", value: boolean): void;
+    (e: "update:addStopClicked"): void;
 }>();
 
 const onToggleSheetHidden = () => {
     emit("update:isSheetHidden", !props.isSheetHidden);
+};
+
+const handleAddStopClick = () => {
+    onToggleSheetHidden();
+    emit("update:addStopClicked");
 };
 
 const cancelAutoStart = () => {
@@ -121,21 +127,20 @@ watch(
                         />
                         <div>
                             <div class="value">{{ routeEta }}</div>
-                            <div class="label">
-                                {{ t("common.estimatedTime") }}
+                            <div class="label route-distance">
+                                {{ routeDistanceConverted }} {{ distanceUnit }}
                             </div>
                         </div>
                     </div>
 
-                    <div class="stat-block">
-                        <Icon name="lucide:ruler" size="26" class="icon-dist" />
-                        <div>
-                            <div class="value">
-                                {{ routeDistanceConverted }} {{ distanceUnit }}
-                            </div>
-                            <div class="label">{{ t("common.distance") }}</div>
-                        </div>
-                    </div>
+                    <HudButton
+                        type="text-btn"
+                        class="darker"
+                        v-on:click="handleAddStopClick"
+                    >
+                        <Icon name="lucide:map-pin-plus" size="22" />
+                        <span>{{ t("map.addStop") }}</span>
+                    </HudButton>
                 </div>
 
                 <div class="action-buttons">

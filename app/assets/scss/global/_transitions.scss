@@ -7,7 +7,7 @@ $ease-pop: cubic-bezier(0.19, 1, 0.22, 1);
  */
 .fade-enter-active,
 .fade-leave-active {
-    transition: opacity 0.6s $ease-smooth;
+    transition: opacity 0.4s $ease-smooth !important;
 }
 
 .fade-enter-from,

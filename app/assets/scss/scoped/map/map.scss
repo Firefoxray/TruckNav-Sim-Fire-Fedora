@@ -70,6 +70,12 @@
     }
 }
 
+.add-stop-hud-btn {
+    .icon {
+        color: $green-color;
+    }
+}
+
 .warnings {
     position: absolute;
     bottom: calc(30px + $game-info-bar-height);
