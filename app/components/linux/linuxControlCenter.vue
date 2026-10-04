@@ -39,6 +39,15 @@ interface LinuxJob {
     logTail: string[];
 }
 
+const props = withDefaults(
+    defineProps<{
+        localActions?: boolean;
+    }>(),
+    {
+        localActions: true,
+    },
+);
+
 const status = ref<LinuxStatus | null>(null);
 const loading = ref(false);
 const actionLoading = ref<"update-app" | "rebuild-map" | null>(null);
@@ -177,8 +186,23 @@ onUnmounted(() => {
                 <h2>Local control center</h2>
             </div>
             <div class="linux-icon">
-                <Icon name="lucide:square-terminal" size="24" />
+                <Icon
+                    :name="
+                        props.localActions
+                            ? 'lucide:square-terminal'
+                            : 'lucide:laptop'
+                    "
+                    size="24"
+                />
             </div>
+        </div>
+
+        <div v-if="!props.localActions" class="remote-view-note">
+            <Icon name="lucide:wifi" size="16" />
+            <span>
+                Remote view from another Linux device. Status is live, but
+                update/rebuild commands must be run on the TruckNav host.
+            </span>
         </div>
 
         <div class="linux-status-grid">
@@ -247,7 +271,7 @@ onUnmounted(() => {
         <div class="linux-actions">
             <button
                 class="linux-action"
-                :disabled="loading || !!actionLoading"
+                :disabled="loading || !!actionLoading || !props.localActions"
                 @click="refreshStatus(true)"
             >
                 <Icon
@@ -264,6 +288,7 @@ onUnmounted(() => {
             <button
                 class="linux-action primary"
                 :disabled="
+                    !props.localActions ||
                     !!actionLoading ||
                     !status?.app.updateAvailable ||
                     status?.app.dirty
@@ -283,7 +308,7 @@ onUnmounted(() => {
 
             <button
                 class="linux-action"
-                :disabled="!!actionLoading"
+                :disabled="!!actionLoading || !props.localActions"
                 @click="startAction('rebuild-map')"
             >
                 <Icon
