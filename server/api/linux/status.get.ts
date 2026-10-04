@@ -1,0 +1,133 @@
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { defineEventHandler, getQuery } from "h3";
+
+function git(repoRoot: string, args: string[]): string {
+    return execFileSync("git", args, {
+        cwd: repoRoot,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+}
+
+export default defineEventHandler((event) => {
+    const repoRoot = process.env.TRUCKNAV_REPO_ROOT || process.cwd();
+    const query = getQuery(event);
+
+    let branch = "unknown";
+    let commit = "";
+    let upstream: string | null = null;
+    let ahead = 0;
+    let behind = 0;
+    let fetchError: string | null = null;
+
+    try {
+        branch = git(repoRoot, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
+    } catch {
+        branch = "detached";
+    }
+
+    try {
+        commit = git(repoRoot, ["rev-parse", "HEAD"]);
+    } catch {
+        commit = "";
+    }
+
+    try {
+        upstream = git(repoRoot, [
+            "rev-parse",
+            "--abbrev-ref",
+            "--symbolic-full-name",
+            "@{u}",
+        ]);
+    } catch {
+        upstream = branch !== "detached" ? "origin/" + branch : null;
+    }
+
+    if (query.refresh === "1" && upstream) {
+        const slash = upstream.indexOf("/");
+        const remote = slash > 0 ? upstream.slice(0, slash) : "origin";
+        const remoteBranch =
+            slash > 0 ? upstream.slice(slash + 1) : branch;
+
+        try {
+            execFileSync("git", ["fetch", remote, remoteBranch], {
+                cwd: repoRoot,
+                stdio: ["ignore", "pipe", "pipe"],
+            });
+        } catch (error: any) {
+            fetchError =
+                error?.stderr?.toString()?.trim() ||
+                error?.message ||
+                "git fetch failed";
+        }
+    }
+
+    if (upstream) {
+        try {
+            const counts = git(repoRoot, [
+                "rev-list",
+                "--left-right",
+                "--count",
+                "HEAD..." + upstream,
+            ])
+                .split(/\s+/)
+                .map(Number);
+            ahead = counts[0] || 0;
+            behind = counts[1] || 0;
+        } catch {
+            ahead = 0;
+            behind = 0;
+        }
+    }
+
+    const dirtyResult = spawnSync(
+        "git",
+        ["diff", "--quiet", "--", "."],
+        {
+            cwd: repoRoot,
+            stdio: "ignore",
+        },
+    );
+    const dirty = dirtyResult.status !== 0;
+
+    const manifestPath = join(
+        repoRoot,
+        "public",
+        "data",
+        "ats",
+        "map-data",
+        "trucknav-linux-map.json",
+    );
+
+    let map: Record<string, any> = { available: false };
+    if (existsSync(manifestPath)) {
+        try {
+            map = {
+                available: true,
+                ...JSON.parse(readFileSync(manifestPath, "utf8")),
+            };
+        } catch {
+            map = {
+                available: false,
+                error: "Map manifest could not be read",
+            };
+        }
+    }
+
+    return {
+        app: {
+            branch,
+            commit,
+            shortCommit: commit.slice(0, 10),
+            upstream,
+            dirty,
+            ahead,
+            behind,
+            updateAvailable: behind > 0 && ahead === 0,
+            fetchError,
+        },
+        map,
+    };
+});
