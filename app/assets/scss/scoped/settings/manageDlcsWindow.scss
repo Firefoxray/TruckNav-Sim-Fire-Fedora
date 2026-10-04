@@ -154,3 +154,21 @@
         color: var(--theme-color);
     }
 }
+
+
+.dlc-image-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    box-sizing: border-box;
+    background: linear-gradient(
+        135deg,
+        $primaryDarkerColor 0%,
+        $primaryColor 100%
+    );
+    color: $white-font-text;
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 650;
+}
