@@ -9,18 +9,7 @@ import {
 
 const { selectedGame } = useGameSelection();
 const { updateProfile, activeSettings } = useSettings();
-const { isMobile, isElectron, isWeb } = usePlatform();
-
-const isLinuxLocalWeb = computed(() => {
-    if (!isWeb.value || typeof window === "undefined") return false;
-    const isLinuxDesktop =
-        /Linux/i.test(navigator.userAgent) &&
-        !/Android/i.test(navigator.userAgent);
-    const host = window.location.hostname;
-    const isLocalHost =
-        host === "127.0.0.1" || host === "localhost" || host === "::1";
-    return isLinuxDesktop && isLocalHost;
-});
+const { isMobile, isElectron, isLinuxLocalWeb } = usePlatform();
 const { t } = useTranslations();
 
 const emit = defineEmits(["connected", "goBack"]);
@@ -135,16 +124,26 @@ function toggleModPanel() {
 <template>
     <section class="section-mobile-menu">
         <div class="title">
-            <div class="back-btn" @click="emit('goBack')">
+            <div
+                v-if="!isLinuxLocalWeb"
+                class="back-btn"
+                @click="emit('goBack')"
+            >
                 <Icon name="lucide:arrow-left" size="24" />
             </div>
-            <Icon class="icon" name="lucide:cast" size="20" />
+            <Icon
+                class="icon"
+                :name="isLinuxLocalWeb ? 'lucide:truck' : 'lucide:cast'"
+                size="20"
+            />
             <span>{{
                 isLinuxLocalWeb ? "TruckNav Linux" : t("mobile.pairWithComputer")
             }}</span>
         </div>
 
-        <div class="content">
+        <div class="content" :class="{ 'linux-content': isLinuxLocalWeb }">
+            <LinuxControlCenter v-if="isLinuxLocalWeb" />
+
             <div class="top-content">
                 <GameSelection v-model="selectedGame" :width="150" />
                 <div
@@ -164,6 +163,7 @@ function toggleModPanel() {
                     </button>
 
                     <button
+                        v-if="!isLinuxLocalWeb"
                         @click="uninstallMap()"
                         class="btn nav-btn mod-btn default-color"
                     >
