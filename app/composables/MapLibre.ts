@@ -13,6 +13,11 @@ export async function initializeMap(
 ): Promise<MapLibreGl> {
     const { settings, activeSettings } = useSettings();
 
+    const isFreshAtsBaseMap =
+        settings.value.selectedGame === "ats" &&
+        (!activeSettings.value.activeMod ||
+            activeSettings.value.activeMod === "none");
+
     const baseUrl = window.location.origin;
 
     const maplibregl = (await import("maplibre-gl")).default;
@@ -85,6 +90,15 @@ export async function initializeMap(
                 type: "line",
                 source: `${settings.value.selectedGame}`,
                 "source-layer": `${settings.value.selectedGame}`,
+                ...(isFreshAtsBaseMap
+                    ? {
+                          filter: [
+                              "==",
+                              ["get", "type"],
+                              "road",
+                          ] as any,
+                      }
+                    : {}),
                 paint: {
                     "line-color": "#3d546e",
                     "line-width": 2,
@@ -220,6 +234,15 @@ export async function initializeMap(
             type: "line",
             source: `${settings.value.selectedGame}`,
             "source-layer": `${settings.value.selectedGame}`,
+            ...(isFreshAtsBaseMap
+                ? {
+                      filter: [
+                          "==",
+                          ["get", "type"],
+                          "road",
+                      ] as any,
+                  }
+                : {}),
             layout: {
                 "line-join": ["step", ["zoom"], "miter", 8, "round"],
                 "line-cap": ["step", ["zoom"], "butt", 8, "round"],
@@ -250,8 +273,21 @@ export async function initializeMap(
             {
                 id: "maparea-zones",
                 type: "fill",
-                source: "all-data",
-                "source-layer": "mapareas",
+                source: isFreshAtsBaseMap
+                    ? `${settings.value.selectedGame}`
+                    : "all-data",
+                "source-layer": isFreshAtsBaseMap
+                    ? `${settings.value.selectedGame}`
+                    : "mapareas",
+                ...(isFreshAtsBaseMap
+                    ? {
+                          filter: [
+                              "==",
+                              ["get", "type"],
+                              "mapArea",
+                          ] as any,
+                      }
+                    : {}),
                 paint: {
                     "fill-color": [
                         "match",
@@ -287,8 +323,21 @@ export async function initializeMap(
             {
                 id: "prefab-zones",
                 type: "fill",
-                source: "all-data",
-                "source-layer": "prefabs",
+                source: isFreshAtsBaseMap
+                    ? `${settings.value.selectedGame}`
+                    : "all-data",
+                "source-layer": isFreshAtsBaseMap
+                    ? `${settings.value.selectedGame}`
+                    : "prefabs",
+                ...(isFreshAtsBaseMap
+                    ? {
+                          filter: [
+                              "==",
+                              ["get", "type"],
+                              "prefab",
+                          ] as any,
+                      }
+                    : {}),
                 paint: {
                     "fill-color": [
                         "match",
@@ -352,9 +401,19 @@ export async function initializeMap(
         map.addLayer({
             id: "all-sprites",
             type: "symbol",
-            source: "all-data",
-            "source-layer": "spritelocations",
-            filter: ["!=", ["get", "poiType"], "road"],
+            source: isFreshAtsBaseMap
+                ? `${settings.value.selectedGame}`
+                : "all-data",
+            "source-layer": isFreshAtsBaseMap
+                ? `${settings.value.selectedGame}`
+                : "spritelocations",
+            filter: isFreshAtsBaseMap
+                ? [
+                      "all",
+                      ["has", "sprite"],
+                      ["!=", ["get", "poiType"], "road"],
+                  ]
+                : ["!=", ["get", "poiType"], "road"],
             minzoom: 8,
             layout: {
                 "icon-image": ["get", "sprite"],
@@ -387,9 +446,19 @@ export async function initializeMap(
         map.addLayer({
             id: "road-sprites",
             type: "symbol",
-            source: "all-data",
-            "source-layer": "spritelocations",
-            filter: ["==", ["get", "poiType"], "road"],
+            source: isFreshAtsBaseMap
+                ? `${settings.value.selectedGame}`
+                : "all-data",
+            "source-layer": isFreshAtsBaseMap
+                ? `${settings.value.selectedGame}`
+                : "spritelocations",
+            filter: isFreshAtsBaseMap
+                ? [
+                      "all",
+                      ["has", "sprite"],
+                      ["==", ["get", "poiType"], "road"],
+                  ]
+                : ["==", ["get", "poiType"], "road"],
             minzoom: 8,
             layout: {
                 "icon-image": ["get", "sprite"],
@@ -411,9 +480,19 @@ export async function initializeMap(
         map.addLayer({
             id: "city-labels",
             type: "symbol",
-            source: "all-data",
-            "source-layer": "cities",
-            filter: ["!=", ["get", "capital"], 2],
+            source: isFreshAtsBaseMap
+                ? `${settings.value.selectedGame}`
+                : "all-data",
+            "source-layer": isFreshAtsBaseMap
+                ? `${settings.value.selectedGame}`
+                : "cities",
+            filter: isFreshAtsBaseMap
+                ? [
+                      "all",
+                      ["==", ["get", "type"], "city"],
+                      ["!=", ["get", "capital"], 2],
+                  ]
+                : ["!=", ["get", "capital"], 2],
             layout: {
                 "text-field": ["get", "name"],
                 "text-font": [
@@ -439,9 +518,19 @@ export async function initializeMap(
         map.addLayer({
             id: "capital-major-labels",
             type: "symbol",
-            filter: ["==", ["get", "capital"], 2],
-            source: "all-data",
-            "source-layer": "cities",
+            filter: isFreshAtsBaseMap
+                ? [
+                      "all",
+                      ["==", ["get", "type"], "city"],
+                      ["==", ["get", "capital"], 2],
+                  ]
+                : ["==", ["get", "capital"], 2],
+            source: isFreshAtsBaseMap
+                ? `${settings.value.selectedGame}`
+                : "all-data",
+            "source-layer": isFreshAtsBaseMap
+                ? `${settings.value.selectedGame}`
+                : "cities",
             layout: {
                 "text-field": ["get", "name"],
                 "text-size": 18,
@@ -466,8 +555,21 @@ export async function initializeMap(
         map.addLayer({
             id: "country-labels",
             type: "symbol",
-            source: "all-data",
-            "source-layer": "countrynames",
+            source: isFreshAtsBaseMap
+                ? `${settings.value.selectedGame}`
+                : "all-data",
+            "source-layer": isFreshAtsBaseMap
+                ? `${settings.value.selectedGame}`
+                : "countrynames",
+            ...(isFreshAtsBaseMap
+                ? {
+                      filter: [
+                          "==",
+                          ["get", "type"],
+                          "country",
+                      ] as any,
+                  }
+                : {}),
             layout: {
                 "text-field": ["get", "name"],
                 "text-size": 20,
