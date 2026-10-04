@@ -12,6 +12,13 @@ echo
 bash scripts/map-data/generate-ats-visual-map.sh
 
 echo
+echo "=== Generating current ATS city/company data ==="
+python3 scripts/map-data/generate-ats-aux-data.py \
+  build/map-data/ats-parser/usa-cities.json \
+  build/map-data/ats-trucknav/map-data/ats-released.geojson \
+  build/map-data/ats-trucknav/map-data
+
+echo
 bash scripts/map-data/prepare-ats-test-bundle.sh
 
 echo
