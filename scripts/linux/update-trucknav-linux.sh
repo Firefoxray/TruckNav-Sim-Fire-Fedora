@@ -14,7 +14,11 @@ require_cmd() {
 require_cmd git
 require_cmd npm
 
-if ! git diff --quiet -- .; then
+if ! git diff --quiet -- \
+  . \
+  ':(exclude)public/data/ats/**' \
+  ':(exclude)public/sprites/ats/**'
+then
   echo "Refusing to update because tracked source files have local changes." >&2
   echo "Commit, stash, or discard those source changes first." >&2
   git status --short --untracked-files=no >&2 || true
