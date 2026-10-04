@@ -70,6 +70,10 @@ git -C "$MAPS_DIR" fetch origin main
 git -C "$MAPS_DIR" checkout --detach "$MAPS_REVISION"
 git -C "$MAPS_DIR" reset --hard "$MAPS_REVISION"
 
+echo "Initializing required git submodules..."
+git -C "$MAPS_DIR" submodule sync --recursive
+git -C "$MAPS_DIR" submodule update --init --recursive
+
 python3 "$PATCH_SCRIPT" "$MAPS_DIR"
 
 echo
