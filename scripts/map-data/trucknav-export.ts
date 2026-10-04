@@ -13,12 +13,12 @@ import {
 } from '@truckermudgeon/map/constants';
 import { getCommonItem } from '@truckermudgeon/map/get-common-item';
 import { getLineString } from '@truckermudgeon/map/linestring';
+import type { Position } from '@truckermudgeon/base/geom';
 import { fromAtsCoordsToWgs84 } from '@truckermudgeon/map/projections';
 import type {
   CompanyItem,
   Ferry,
   Node,
-  Position,
 } from '@truckermudgeon/map/types';
 
 const GRAPH_STRIDE = 12;
