@@ -84,7 +84,14 @@ export default defineEventHandler((event) => {
 
     const dirtyResult = spawnSync(
         "git",
-        ["diff", "--quiet", "--", "."],
+        [
+            "diff",
+            "--quiet",
+            "--",
+            ".",
+            ":(exclude)public/data/ats/**",
+            ":(exclude)public/sprites/ats/**",
+        ],
         {
             cwd: repoRoot,
             stdio: "ignore",
