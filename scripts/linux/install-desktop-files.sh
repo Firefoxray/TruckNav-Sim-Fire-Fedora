@@ -139,36 +139,36 @@ chmod +x "$BIN_DIR/trucknav-active-repo"
 cat > "$BIN_DIR/trucknav-linux-launcher" <<EOF_WRAPPER
 #!/usr/bin/env bash
 set -euo pipefail
-REPO_ROOT="$("$BIN_DIR/trucknav-active-repo")"
-export TRUCKNAV_REPO_ROOT="$REPO_ROOT"
-exec python3 "$REPO_ROOT/scripts/linux/trucknav-linux-launcher.py" "$@"
+REPO_ROOT="\$("$BIN_DIR/trucknav-active-repo")"
+export TRUCKNAV_REPO_ROOT="\$REPO_ROOT"
+exec python3 "\$REPO_ROOT/scripts/linux/trucknav-linux-launcher.py" "\$@"
 EOF_WRAPPER
 chmod +x "$BIN_DIR/trucknav-linux-launcher"
 
 cat > "$BIN_DIR/trucknav-all" <<EOF_WRAPPER
 #!/usr/bin/env bash
 set -euo pipefail
-REPO_ROOT="$("$BIN_DIR/trucknav-active-repo")"
-export TRUCKNAV_REPO_ROOT="$REPO_ROOT"
-exec "$REPO_ROOT/scripts/linux/launch-trucknav.sh" --wait "$@"
+REPO_ROOT="\$("$BIN_DIR/trucknav-active-repo")"
+export TRUCKNAV_REPO_ROOT="\$REPO_ROOT"
+exec "\$REPO_ROOT/scripts/linux/launch-trucknav.sh" --wait "\$@"
 EOF_WRAPPER
 chmod +x "$BIN_DIR/trucknav-all"
 
 cat > "$BIN_DIR/trucknav-ats-all" <<EOF_WRAPPER
 #!/usr/bin/env bash
 set -euo pipefail
-REPO_ROOT="$("$BIN_DIR/trucknav-active-repo")"
-export TRUCKNAV_REPO_ROOT="$REPO_ROOT"
-exec "$REPO_ROOT/scripts/linux/launch-ats-trucknav.sh" "$@"
+REPO_ROOT="\$("$BIN_DIR/trucknav-active-repo")"
+export TRUCKNAV_REPO_ROOT="\$REPO_ROOT"
+exec "\$REPO_ROOT/scripts/linux/launch-ats-trucknav.sh" "\$@"
 EOF_WRAPPER
 chmod +x "$BIN_DIR/trucknav-ats-all"
 
 cat > "$BIN_DIR/trucknav-stop" <<EOF_WRAPPER
 #!/usr/bin/env bash
 set -euo pipefail
-REPO_ROOT="$("$BIN_DIR/trucknav-active-repo")"
-export TRUCKNAV_REPO_ROOT="$REPO_ROOT"
-exec "$REPO_ROOT/scripts/linux/stop-trucknav.sh" "$@"
+REPO_ROOT="\$("$BIN_DIR/trucknav-active-repo")"
+export TRUCKNAV_REPO_ROOT="\$REPO_ROOT"
+exec "\$REPO_ROOT/scripts/linux/stop-trucknav.sh" "\$@"
 EOF_WRAPPER
 chmod +x "$BIN_DIR/trucknav-stop"
 
