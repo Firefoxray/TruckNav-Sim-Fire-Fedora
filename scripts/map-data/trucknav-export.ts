@@ -14,7 +14,6 @@ import {
 import { getCommonItem } from '@truckermudgeon/map/get-common-item';
 import { getLineString } from '@truckermudgeon/map/linestring';
 import type { Position } from '@truckermudgeon/base/geom';
-import { fromAtsCoordsToWgs84 } from '@truckermudgeon/map/projections';
 import type {
   CompanyItem,
   Ferry,
@@ -23,6 +22,15 @@ import type {
 
 const GRAPH_STRIDE = 12;
 const DLC_MASK_FLAG = 1 << 20;
+const TRUCKNAV_MERCATOR_R = 300000.0;
+
+function toTruckNavCoords([gameX, gameY]: Position): [number, number] {
+  const lon = (gameX / TRUCKNAV_MERCATOR_R) * (180.0 / Math.PI);
+  const yMerc = -gameY / TRUCKNAV_MERCATOR_R;
+  const latRad = 2.0 * Math.atan(Math.exp(yMerc)) - Math.PI / 2.0;
+  const lat = latRad * (180.0 / Math.PI);
+  return [lon, lat];
+}
 
 const [parserDirArg, graphDirArg, outDirArg] = process.argv.slice(2);
 if (!parserDirArg || !graphDirArg || !outDirArg) {
@@ -248,13 +256,11 @@ try {
         fallbackGeometryCount++;
       }
 
-      let coords = dedupeCoords(
-        gameGeometry.map(p => fromAtsCoordsToWgs84(p) as [number, number]),
-      );
+      let coords = dedupeCoords(gameGeometry.map(p => toTruckNavCoords(p)));
       if (coords.length < 2) {
         coords = [
-          fromAtsCoordsToWgs84([startNode.x, startNode.y]) as [number, number],
-          fromAtsCoordsToWgs84([endNode.x, endNode.y]) as [number, number],
+          toTruckNavCoords([startNode.x, startNode.y]),
+          toTruckNavCoords([endNode.x, endNode.y]),
         ];
         fallbackGeometryCount++;
       }
@@ -335,6 +341,7 @@ const manifest = {
   source: {
     game: 'ats',
     parserVersionFile: 'usa-version.txt',
+    projection: 'trucknav-flat-mercator-r300000',
   },
   graph: {
     stride: GRAPH_STRIDE,
