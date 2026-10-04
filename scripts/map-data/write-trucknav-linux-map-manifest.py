@@ -19,11 +19,42 @@ version = version_path.read_text(encoding="utf-8").strip()
 graph = json.loads(graph_path.read_text(encoding="utf-8"))
 visual = json.loads(visual_path.read_text(encoding="utf-8"))
 
+def find_steam_manifest():
+    home = Path.home()
+    candidates = [
+        home / ".local/share/Steam/steamapps/appmanifest_270880.acf",
+        home / ".steam/steam/steamapps/appmanifest_270880.acf",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
+
+def parse_acf_value(text, key):
+    needle = f'"{key}"'
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(needle):
+            parts = stripped.split('"')
+            if len(parts) >= 4:
+                return parts[3]
+    return None
+
+steam_manifest = find_steam_manifest()
+steam_build_id = None
+steam_last_updated = None
+if steam_manifest:
+    steam_text = steam_manifest.read_text(encoding="utf-8", errors="replace")
+    steam_build_id = parse_acf_value(steam_text, "buildid")
+    steam_last_updated = parse_acf_value(steam_text, "LastUpdated")
+
 manifest = {
     "schemaVersion": 1,
     "game": "ats",
     "gameVersion": version,
     "generatedAt": datetime.now(timezone.utc).isoformat(),
+    "steamBuildId": steam_build_id,
+    "steamLastUpdated": steam_last_updated,
     "projection": graph.get("source", {}).get("projection")
     or visual.get("projection"),
     "supportedDlcs": 18,
