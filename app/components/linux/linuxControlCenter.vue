@@ -149,7 +149,7 @@ onUnmounted(() => {
                 <h2>Local control center</h2>
             </div>
             <div class="linux-icon">
-                <Icon name="lucide:terminal-square" size="24" />
+                <Icon name="lucide:square-terminal" size="24" />
             </div>
         </div>
 
