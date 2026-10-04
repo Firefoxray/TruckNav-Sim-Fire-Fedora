@@ -39,6 +39,9 @@ cp -a "$REF_ATS" "$DEST_ATS"
 
 # Replace dynamic roads/map features and routing with the fresh ATS 1.61 build.
 cp -f "$GEN_TILES/roads.mp3" "$DEST_ATS/map-data/tiles/roads.mp3"
+cp -f \
+    "$GENERATED_ROOT/map-data/trucknav-visual-manifest.json" \
+    "$DEST_ATS/map-data/trucknav-visual-manifest.json"
 mkdir -p "$DEST_ATS/roadnetwork"
 cp -f "$GEN_ROUTING/graph.bin" "$DEST_ATS/roadnetwork/graph.bin"
 cp -f "$GEN_ROUTING/geometry.bin" "$DEST_ATS/roadnetwork/geometry.bin"
