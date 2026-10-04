@@ -67,3 +67,44 @@ visual bounds, and generation timestamp.
 It starts the TruckNav web app, waits until ATS is available, then starts the
 telemetry helper. This allows UI/map development without repeatedly restarting
 the game.
+
+
+## Stable and Testing channels
+
+The Fedora desktop launcher is channel-aware. It keeps two repository paths in:
+
+```
+~/.config/trucknav-linux-launcher/config.json
+```
+
+The intended layout during development is:
+
+```
+Stable  -> TruckNav-Sim-Fire-Fedora       (master)
+Testing -> TruckNav-Sim-South-Dakota      (development worktree)
+```
+
+The application-menu shortcuts resolve the active channel at launch time, so
+they do not need to be recreated whenever the active checkout changes. The GUI
+launcher shows **Stable** and **Testing** buttons and restarts itself after a
+channel switch.
+
+Install/refresh the channel-aware shortcuts from a checkout with:
+
+```bash
+bash scripts/linux/install-desktop-files.sh --activate testing
+```
+
+or:
+
+```bash
+bash scripts/linux/install-desktop-files.sh --activate stable
+```
+
+The launcher UI and icon are copied under `~/.local/share/trucknav-linux/` so
+the channel switcher remains available even if the active checkout itself is an
+older stable revision.
+
+When a tested feature branch is merged into master, activate **Stable** and the
+normal application-menu shortcuts immediately start using the master checkout.
+The old Testing worktree can then be removed after it is no longer needed.
