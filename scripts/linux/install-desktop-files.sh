@@ -6,12 +6,20 @@ BIN_DIR="$HOME/.local/bin"
 DESKTOP_DIR="$HOME/.local/share/applications"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/trucknav-linux-launcher"
 CONFIG_PATH="$CONFIG_DIR/config.json"
-ICON_PATH="$REPO_ROOT/assets/icon-only.png"
-mkdir -p "$BIN_DIR" "$DESKTOP_DIR" "$CONFIG_DIR"
+APP_DIR="$HOME/.local/share/trucknav-linux"
+LAUNCHER_COPY="$APP_DIR/trucknav-linux-launcher.py"
+ICON_SOURCE="$REPO_ROOT/assets/icon-only.png"
+ICON_PATH="$APP_DIR/icon-only.png"
+mkdir -p "$BIN_DIR" "$DESKTOP_DIR" "$CONFIG_DIR" "$APP_DIR"
 
-if [[ ! -f "$ICON_PATH" ]]; then
-  echo "Warning: expected TruckNav icon not found at $ICON_PATH" >&2
+if [[ ! -f "$ICON_SOURCE" ]]; then
+  echo "Warning: expected TruckNav icon not found at $ICON_SOURCE" >&2
+else
+  cp -f "$ICON_SOURCE" "$ICON_PATH"
 fi
+
+cp -f "$REPO_ROOT/scripts/linux/trucknav-linux-launcher.py" "$LAUNCHER_COPY"
+chmod +x "$LAUNCHER_COPY"
 
 requested_channel=""
 if [[ "${1:-}" == "--activate" ]]; then
@@ -141,7 +149,7 @@ cat > "$BIN_DIR/trucknav-linux-launcher" <<EOF_WRAPPER
 set -euo pipefail
 REPO_ROOT="\$("$BIN_DIR/trucknav-active-repo")"
 export TRUCKNAV_REPO_ROOT="\$REPO_ROOT"
-exec python3 "\$REPO_ROOT/scripts/linux/trucknav-linux-launcher.py" "\$@"
+exec python3 "$LAUNCHER_COPY" "\$@"
 EOF_WRAPPER
 chmod +x "$BIN_DIR/trucknav-linux-launcher"
 
@@ -215,3 +223,4 @@ echo
 echo "Launcher: $DESKTOP_DIR/trucknav-linux-launcher.desktop"
 echo "Direct:   $DESKTOP_DIR/trucknav-sim.desktop"
 echo "Config:   $CONFIG_PATH"
+echo "Channel-aware launcher copy: $LAUNCHER_COPY"
