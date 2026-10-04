@@ -12,6 +12,7 @@ if [[ ! -f "$TELEMETRY_EXE" ]]; then
 fi
 
 cd "$REPO_ROOT"
+export TRUCKNAV_REPO_ROOT="$REPO_ROOT"
 
 web_pid="$(pid_from_file "$WEB_PID_FILE")"
 if is_pid_running "$web_pid"; then
