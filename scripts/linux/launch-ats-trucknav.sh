@@ -14,6 +14,7 @@ fi
 
 start_web_app() {
   cd "$REPO_ROOT"
+export TRUCKNAV_REPO_ROOT="$REPO_ROOT"
 
   local web_pid
   web_pid="$(pid_from_file "$WEB_PID_FILE")"
