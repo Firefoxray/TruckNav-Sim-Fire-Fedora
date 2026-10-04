@@ -29,6 +29,14 @@ replacements = [
         "  'dlc_il.scs': 50,\n};",
         "  'dlc_il.scs': 50,\n  'dlc_sd.scs': 53,\n};",
     ),
+    (
+        "  Illinois = 14,\n}",
+        "  Illinois = 14,\n  SouthDakota = 41,\n}",
+    ),
+    (
+        "  [AtsCountryId.Illinois]: 50,\n};",
+        "  [AtsCountryId.Illinois]: 50,\n  [AtsCountryId.SouthDakota]: 53,\n};",
+    ),
 ]
 
 changed = False
