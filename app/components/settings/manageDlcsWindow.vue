@@ -6,8 +6,14 @@ import { ets2Expansions } from "~/data/ets2/ets2Expansions";
 import { atsExpansions } from "~/data/ats/atsExpansions";
 
 const loadedImages = ref<Record<number, boolean>>({});
+const failedImages = ref<Record<number, boolean>>({});
 
 const onImageLoaded = (id: number) => {
+    loadedImages.value[id] = true;
+};
+
+const onImageFailed = (id: number) => {
+    failedImages.value[id] = true;
     loadedImages.value[id] = true;
 };
 
@@ -52,6 +58,7 @@ const toggleDlc = (id: number) => {
                         ></div>
 
                         <img
+                            v-if="!failedImages[Number(id)]"
                             :src="`/images/expansions/${settings.selectedGame}/${dlc.imagePath}`"
                             :alt="dlc.name"
                             class="dlc-cover"
@@ -59,7 +66,15 @@ const toggleDlc = (id: number) => {
                                 'is-loaded': loadedImages[Number(id)],
                             }"
                             @load="onImageLoaded(Number(id))"
+                            @error="onImageFailed(Number(id))"
                         />
+                        <div
+                            v-else
+                            class="dlc-cover dlc-image-fallback is-loaded"
+                            :aria-label="dlc.name"
+                        >
+                            {{ dlc.name }}
+                        </div>
                     </div>
 
                     <div class="dlc-details">
