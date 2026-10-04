@@ -132,3 +132,70 @@ if new_speed_limit not in def_text:
     print("Patched ATS 1.61 speed-limit array compatibility.")
 else:
     print("ATS 1.61 speed-limit compatibility patch already applied.")
+
+
+# ATS 1.61 contains at least one composite roundabout candidate whose graph
+# topology does not provide the entrance/exit neighbor assumptions expected by
+# the pinned upstream roundabout detector. Roundabout metadata is supplemental;
+# preserve all valid descriptions and skip/log only malformed candidates rather
+# than aborting the full map build.
+roundabouts = (
+    root
+    / "packages"
+    / "clis"
+    / "generator"
+    / "roundabouts"
+    / "composite-roundabouts.ts"
+)
+if not roundabouts.is_file():
+    raise SystemExit(f"missing expected file: {roundabouts}")
+
+round_text = roundabouts.read_text(encoding="utf-8")
+old_roundabout_block = """  const res = roundaboutCycles.map(cycle => {
+    bar.increment();
+    return calculateRoundaboutLaneInfo(cycle, context);
+  });
+  logger.success(
+    roundaboutCycles.length,
+    'descriptions calculated in',
+    Number(((Date.now() - startTime) / 1000).toFixed(1)),
+    'seconds',
+  );
+"""
+new_roundabout_block = """  const res: RoundaboutDesc[] = [];
+  let skippedRoundabouts = 0;
+  for (const cycle of roundaboutCycles) {
+    bar.increment();
+    try {
+      res.push(calculateRoundaboutLaneInfo(cycle, context));
+    } catch (error) {
+      skippedRoundabouts++;
+      logger.warn(
+        'skipping an invalid composite roundabout cycle',
+        cycle.map(key => keyToNodeUid(key).toString(16)),
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
+  logger.success(
+    res.length,
+    'descriptions calculated in',
+    Number(((Date.now() - startTime) / 1000).toFixed(1)),
+    'seconds',
+    skippedRoundabouts ? `(${skippedRoundabouts} skipped)` : '',
+  );
+"""
+
+if new_roundabout_block not in round_text:
+    if old_roundabout_block not in round_text:
+        raise SystemExit(
+            "truckermudgeon/maps changed unexpectedly; could not patch "
+            "ATS 1.61 composite roundabout handling"
+        )
+    round_text = round_text.replace(
+        old_roundabout_block, new_roundabout_block, 1
+    )
+    roundabouts.write_text(round_text, encoding="utf-8")
+    print("Patched ATS 1.61 composite roundabout compatibility.")
+else:
+    print("ATS 1.61 composite roundabout compatibility patch already applied.")
