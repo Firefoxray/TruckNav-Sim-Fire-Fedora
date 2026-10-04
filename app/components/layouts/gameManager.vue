@@ -210,27 +210,39 @@ function toggleModPanel() {
                         </template>
                     </InfoBox>
 
-                    <button
-                        @click.prevent="
-                            startDownload(
-                                selectedGame,
-                                `https://trucknavapp.com/${selectedGame}.zip`,
-                            )
-                        "
-                        class="btn nav-btn"
-                        :disabled="isDownloading"
-                    >
-                        <span>Download Base Map</span>
-                        <Icon name="lucide:download" size="20" />
-                    </button>
+                    <template v-if="!isLinuxLocalWeb">
+                        <button
+                            @click.prevent="
+                                startDownload(
+                                    selectedGame,
+                                    `https://trucknavapp.com/${selectedGame}.zip`,
+                                )
+                            "
+                            class="btn nav-btn"
+                            :disabled="isDownloading"
+                        >
+                            <span>Download Base Map</span>
+                            <Icon name="lucide:download" size="20" />
+                        </button>
 
-                    <ProgressBar
-                        class="progress-bar"
-                        v-if="isDownloading && downloadingId === selectedGame"
-                        :progress="
-                            downloadProgress === -1 ? 99 : downloadProgress
-                        "
-                    />
+                        <ProgressBar
+                            class="progress-bar"
+                            v-if="
+                                isDownloading &&
+                                downloadingId === selectedGame
+                            "
+                            :progress="
+                                downloadProgress === -1
+                                    ? 99
+                                    : downloadProgress
+                            "
+                        />
+                    </template>
+
+                    <p v-else class="linux-map-hint">
+                        Use <strong>Rebuild ATS Map</strong> above to generate
+                        the map directly from your installed ATS files.
+                    </p>
                 </div>
             </template>
 
