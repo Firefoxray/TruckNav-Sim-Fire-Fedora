@@ -91,13 +91,56 @@ The script validates that the parser produced roads with South Dakota DLC guard
 `53` and prints any country entry that mentions Dakota, including its country
 id. Keep the full terminal output for the next stage.
 
+## Parser validation result
+
+The ATS 1.61.3.1 parse completed successfully on the Fedora development
+machine.
+
+Validated South Dakota values:
+
+- Country token: `south_dakota`
+- Country id: `41`
+- Singleton SCS DLC guard: `53`
+- Parsed South Dakota cities: `13`
+- Parsed South Dakota roads: `6059`
+
+The build-tool patch now also maps country id `41` to DLC guard `53`.
+
+## Step 4: generate map/routing source data
+
+Pull the latest branch changes, rerun setup once so the updated compatibility
+patch is applied to the isolated tooling checkout, then generate the source
+artifacts:
+
+```bash
+git pull --ff-only
+bash scripts/map-data/setup-map-tools.sh
+bash scripts/map-data/generate-ats-source-data.sh
+```
+
+This stage intentionally does not require tippecanoe yet. It generates:
+
+- normal ATS GeoJSON;
+- uncoalesced ATS GeoJSON for matching routing edges to road geometry;
+- the upstream directed routing graph;
+- prefab curves;
+- roundabout metadata;
+- a fresh ATS sprite sheet.
+
+Output is written under:
+
+```
+build/map-data/ats-generated/
+```
+
 ## Next pipeline stages
 
-After parser validation:
+After source-data generation:
 
-1. Generate fresh ATS GeoJSON.
-2. Generate PMTiles and sprites from the same parsed source.
-3. Generate the directed routing graph.
+1. Inspect/validate the generated South Dakota graph and geometry.
+2. Convert the directed graph into TruckNav's binary graph format.
+3. Generate PMTiles from the same parsed source.
+4. Generate or adapt the combined visual map layers required by TruckNav.
 4. Convert SCS DLC guards to TruckNav DLC ownership ids.
    - South Dakota singleton guard `53` -> TruckNav DLC id `18`.
    - Mixed border guards `54-57` must remain gated by all required states.
