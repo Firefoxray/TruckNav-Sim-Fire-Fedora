@@ -8,7 +8,7 @@ OUT_DIR="${TRUCKNAV_ATS_PARSE_DIR:-$REPO_ROOT/build/map-data/ats-parser}"
 ATS_APP_ID="270880"
 
 if [[ ! -f "$TOOLS_ROOT/env.sh" ]]; then
-    "$SETUP_SCRIPT"
+    bash "$SETUP_SCRIPT"
 fi
 
 # shellcheck disable=SC1090
