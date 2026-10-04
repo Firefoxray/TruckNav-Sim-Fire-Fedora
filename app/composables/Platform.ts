@@ -13,9 +13,23 @@ export const usePlatform = () => {
         if (platform === "android" || platform === "ios") isMobile.value = true;
     }
 
+    const isLinuxLocalWeb = computed(() => {
+        if (!isWeb.value || typeof window === "undefined") return false;
+
+        const isLinuxDesktop =
+            /Linux/i.test(navigator.userAgent) &&
+            !/Android/i.test(navigator.userAgent);
+        const host = window.location.hostname;
+        const isLocalHost =
+            host === "127.0.0.1" || host === "localhost" || host === "::1";
+
+        return isLinuxDesktop && isLocalHost;
+    });
+
     return {
         isElectron,
         isMobile,
         isWeb,
+        isLinuxLocalWeb,
     };
 };
