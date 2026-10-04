@@ -140,8 +140,12 @@ monitor_ats() {
 echo "Starting TruckNav web app"
 start_web_app
 
-echo "Launching ATS"
-steam "steam://rungameid/$TRUCKNAV_ATS_APP_ID" >/dev/null 2>&1 &
+if ats_real_process_matches; then
+  echo "ATS is already running; leaving the game open."
+else
+  echo "Launching ATS"
+  steam "steam://rungameid/$TRUCKNAV_ATS_APP_ID" >/dev/null 2>&1 &
+fi
 
 echo "Waiting for ATS"
 if wait_for_ats; then
