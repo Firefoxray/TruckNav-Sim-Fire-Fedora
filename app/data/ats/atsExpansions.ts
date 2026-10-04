@@ -103,4 +103,10 @@ export const atsExpansions: Record<
         imagePath: "illinois.webp",
         releaseDate: "May 14, 2026",
     },
+
+    18: {
+        name: "South Dakota",
+        imagePath: "south-dakota.webp",
+        releaseDate: "Sep 24, 2026",
+    },
 };
