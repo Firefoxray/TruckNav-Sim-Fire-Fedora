@@ -153,3 +153,54 @@ After source-data generation:
 Do not publish SCS game archives or raw extracted game assets. Generated map
 artifacts and source-derived metadata should be reviewed separately before
 distribution.
+
+
+## Step 5: export TruckNav routing binaries
+
+After `finish-ats-source-data.sh` completes:
+
+```bash
+git pull --ff-only
+bash scripts/map-data/export-trucknav-routing.sh
+```
+
+This exporter uses the fresh upstream directed graph plus the parsed ATS map
+geometry to write TruckNav's runtime format:
+
+```
+build/map-data/ats-trucknav/roadnetwork/
+  graph.bin
+  geometry.bin
+  nodes.bin
+  trucknav-graph-manifest.json
+```
+
+The exporter:
+
+- remaps 64-bit SCS node UIDs to compact integer ids;
+- reconstructs each edge's road/prefab geometry and projects it to WGS84;
+- preserves edge distances and ferry flags;
+- calculates arrival/departure headings;
+- maps SCS DLC guards to TruckNav DLC ids;
+- encodes multi-state border requirements as an exact Float32-safe bitmask;
+- marks detected roundabout edges for a generic roundabout instruction;
+- emits a manifest with South Dakota edge counts and build statistics.
+
+Legacy TruckNav maps still use one DLC id in the same graph field. New values
+at or above `1 << 20` represent a flagged DLC bitmask. Runtime routing on this
+branch understands both formats.
+
+Accurate roundabout exit ordinals are deliberately deferred. The generated
+graph preserves routing through roundabouts and identifies them, but currently
+uses TruckNav's generic "Take the exit at the roundabout" prompt for the new
+graph. This can be enhanced after route validation.
+
+## Remaining work
+
+1. Validate generated binary routing inside TruckNav.
+2. Generate PMTiles for roads and combined visual layers.
+3. Filter or account for ATS 1.61's currently unknown guards 58, 59 and 65
+   before packaging visual map data.
+4. Package and host the ATS 1.61 map bundle.
+5. Add South Dakota (TruckNav DLC id 18) to the live DLC UI only after the
+   routing and visual map bundle both pass validation.
