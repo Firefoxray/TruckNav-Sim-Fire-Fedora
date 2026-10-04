@@ -17,6 +17,18 @@ async function getBaseUrl() {
     return "";
 }
 
+async function hasBundledDevMap(mapName: string): Promise<boolean> {
+    if (!process.dev || typeof window === "undefined") return false;
+
+    try {
+        const markerUrl = `${window.location.origin}/data/${mapName}/TRUCKNAV_TEST_BUILD.txt`;
+        const response = await fetch(markerUrl, { cache: "no-store" });
+        return response.ok;
+    } catch {
+        return false;
+    }
+}
+
 /**
  * Downloads and extracts data into Directory.Data/maps
  * @param mapName: Name of the map directory (e.g ets2, ats)
@@ -172,6 +184,10 @@ export async function isMapDownloaded(mapName: string): Promise<boolean> {
     }
 
     if (isWeb.value || process.dev) {
+        if (await hasBundledDevMap(mapName)) {
+            return true;
+        }
+
         try {
             const base = await getBaseUrl();
             const res = await axios.get(`${base}/api/map-status/${mapName}`);
@@ -269,6 +285,10 @@ export async function getMapFileUrl(
     }
 
     if (isWeb.value || process.dev) {
+        if (await hasBundledDevMap(mapName)) {
+            return `${window.location.origin}/data/${mapName}/${fileName}`;
+        }
+
         const base = await getBaseUrl();
         return `${base}/maps/${mapName}/${fileName}`;
     }
