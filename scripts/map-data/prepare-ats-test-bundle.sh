@@ -42,6 +42,9 @@ cp -f "$GEN_TILES/roads.mp3" "$DEST_ATS/map-data/tiles/roads.mp3"
 cp -f \
     "$GENERATED_ROOT/map-data/trucknav-visual-manifest.json" \
     "$DEST_ATS/map-data/trucknav-visual-manifest.json"
+cp -f \
+    "$GENERATED_ROOT/map-data/trucknav-linux-map.json" \
+    "$DEST_ATS/map-data/trucknav-linux-map.json"
 cp -f "$GENERATED_ROOT/map-data/cities.json" "$DEST_ATS/map-data/cities.json"
 cp -f \
     "$GENERATED_ROOT/map-data/companies.geojson" \
