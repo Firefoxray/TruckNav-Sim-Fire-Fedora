@@ -67,3 +67,20 @@
     justify-self: center;
     align-self: center;
 }
+
+
+.content.linux-content {
+    width: min(1100px, 92%);
+    justify-content: flex-start;
+    overflow-y: auto;
+    padding-top: 1.5rem;
+}
+
+.linux-map-hint {
+    margin: 0;
+    padding: 1rem 1.2rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    font-size: 1.2rem;
+    opacity: 0.8;
+}
