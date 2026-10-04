@@ -99,6 +99,25 @@ export default defineEventHandler((event) => {
     );
     const dirty = dirtyResult.status !== 0;
 
+    let changedFiles: string[] = [];
+    if (dirty) {
+        try {
+            changedFiles = git(repoRoot, [
+                "diff",
+                "--name-only",
+                "--",
+                ".",
+                ":(exclude)public/data/ats/**",
+                ":(exclude)public/sprites/ats/**",
+            ])
+                .split(/\r?\n/)
+                .filter(Boolean)
+                .slice(0, 20);
+        } catch {
+            changedFiles = [];
+        }
+    }
+
     const manifestPath = join(
         repoRoot,
         "public",
@@ -182,6 +201,49 @@ export default defineEventHandler((event) => {
         }
     }
 
+    let installedSteamBuildId: string | null = null;
+    let installedSteamLastUpdated: string | null = null;
+
+    const steamManifestCandidates = [
+        join(
+            process.env.HOME || "",
+            ".local",
+            "share",
+            "Steam",
+            "steamapps",
+            "appmanifest_270880.acf",
+        ),
+        join(
+            process.env.HOME || "",
+            ".steam",
+            "steam",
+            "steamapps",
+            "appmanifest_270880.acf",
+        ),
+    ];
+
+    for (const steamManifestPath of steamManifestCandidates) {
+        if (!existsSync(steamManifestPath)) continue;
+
+        try {
+            const text = readFileSync(steamManifestPath, "utf8");
+            const buildMatch = text.match(/"buildid"\s+"([^"]+)"/);
+            const updatedMatch = text.match(/"LastUpdated"\s+"([^"]+)"/);
+            installedSteamBuildId = buildMatch?.[1] || null;
+            installedSteamLastUpdated = updatedMatch?.[1] || null;
+            break;
+        } catch {
+            // Try the next common Steam location.
+        }
+    }
+
+    const mapSteamBuildId =
+        typeof map.steamBuildId === "string" ? map.steamBuildId : null;
+    const mapUpdateAvailable =
+        !!installedSteamBuildId &&
+        !!mapSteamBuildId &&
+        installedSteamBuildId !== mapSteamBuildId;
+
     return {
         app: {
             branch,
@@ -189,11 +251,19 @@ export default defineEventHandler((event) => {
             shortCommit: commit.slice(0, 10),
             upstream,
             dirty,
+            changedFiles,
             ahead,
             behind,
             updateAvailable: behind > 0 && ahead === 0,
             fetchError,
         },
-        map,
+        ats: {
+            installedSteamBuildId,
+            installedSteamLastUpdated,
+        },
+        map: {
+            ...map,
+            mapUpdateAvailable,
+        },
     };
 });
