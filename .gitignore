@@ -33,3 +33,7 @@ ets2-telemetry-server
 
 
 public/debug-roadnetwork/
+
+# Local ATS map build tooling/data
+.tools/map-data/
+build/map-data/
