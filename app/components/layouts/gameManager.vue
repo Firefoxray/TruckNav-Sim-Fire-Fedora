@@ -9,7 +9,18 @@ import {
 
 const { selectedGame } = useGameSelection();
 const { updateProfile, activeSettings } = useSettings();
-const { isMobile, isElectron } = usePlatform();
+const { isMobile, isElectron, isWeb } = usePlatform();
+
+const isLinuxLocalWeb = computed(() => {
+    if (!isWeb.value || typeof window === "undefined") return false;
+    const isLinuxDesktop =
+        /Linux/i.test(navigator.userAgent) &&
+        !/Android/i.test(navigator.userAgent);
+    const host = window.location.hostname;
+    const isLocalHost =
+        host === "127.0.0.1" || host === "localhost" || host === "::1";
+    return isLinuxDesktop && isLocalHost;
+});
 const { t } = useTranslations();
 
 const emit = defineEmits(["connected", "goBack"]);
@@ -128,7 +139,9 @@ function toggleModPanel() {
                 <Icon name="lucide:arrow-left" size="24" />
             </div>
             <Icon class="icon" name="lucide:cast" size="20" />
-            <span>{{ t("mobile.pairWithComputer") }}</span>
+            <span>{{
+                isLinuxLocalWeb ? "TruckNav Linux" : t("mobile.pairWithComputer")
+            }}</span>
         </div>
 
         <div class="content">
@@ -180,14 +193,22 @@ function toggleModPanel() {
 
             <template v-else-if="!isBaseDownloaded && selectedGame">
                 <div class="bottom-download-button">
-                    <InfoBox type="note">
+                    <InfoBox v-if="!isLinuxLocalWeb" type="note">
                         <template #content>
                             <p>
                                 Please make sure that TruckNav PC Companion is
                                 running before downloading
                             </p>
-                        </template></InfoBox
-                    >
+                        </template>
+                    </InfoBox>
+                    <InfoBox v-else type="note">
+                        <template #content>
+                            <p>
+                                TruckNav Linux can use locally generated ATS map
+                                data without the Windows PC Companion.
+                            </p>
+                        </template>
+                    </InfoBox>
 
                     <button
                         @click.prevent="
