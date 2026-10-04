@@ -204,3 +204,64 @@ graph. This can be enhanced after route validation.
 4. Package and host the ATS 1.61 map bundle.
 5. Add South Dakota (TruckNav DLC id 18) to the live DLC UI only after the
    routing and visual map bundle both pass validation.
+
+
+## Step 6: build fresh ATS visual PMTiles
+
+The working TruckNav install still contains the legacy
+`map-data-combined.mp3`, which is useful for static background geography
+(water/state boundaries). The new ATS parser output is used for roads, map
+areas, prefabs, labels and POIs.
+
+Bootstrap an isolated Tippecanoe 2.79.0 build and generate the released-state
+ATS PMTiles:
+
+```bash
+git pull --ff-only
+bash scripts/map-data/setup-tippecanoe.sh
+bash scripts/map-data/generate-ats-visual-map.sh
+```
+
+The visual builder filters any SCS DLC guard above 57 before tile generation.
+For the ATS 1.61 source used during this project, routing observed unreleased
+guards 59 and 65; they are intentionally excluded rather than guessed.
+
+Output:
+
+```
+build/map-data/ats-trucknav/map-data/tiles/roads.mp3
+build/map-data/ats-trucknav/sprites/
+```
+
+The generated `roads.mp3` is a full fresh ATS feature tileset with source
+layer `ats`. The MapLibre code on this branch uses it for base-map roads,
+prefabs, map areas, POIs, city labels and state-name points. The old
+`map-data-combined.mp3` is retained only for static background layers such as
+water and state outlines.
+
+## Step 7: prepare an isolated test bundle
+
+After routing and visual generation both pass:
+
+```bash
+bash scripts/map-data/prepare-ats-test-bundle.sh
+```
+
+By default this copies the auxiliary ATS data and static combined basemap from
+the sibling working checkout:
+
+```
+../TruckNav-Sim-Fire-Fedora
+```
+
+Then it overwrites the South Dakota worktree with the fresh ATS 1.61 roads,
+routing binaries and sprites. This keeps the normal working checkout untouched.
+
+The test bundle is installed under:
+
+```
+public/data/ats/
+public/sprites/ats/
+```
+
+If the reference checkout is elsewhere, set `TRUCKNAV_REFERENCE_REPO`.
