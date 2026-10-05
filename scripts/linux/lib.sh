@@ -69,3 +69,67 @@ wait_for_url() {
   done
   return 1
 }
+
+
+# Resolve a Steam game's install directory without recursively crawling /mnt.
+# Steam already records every library in libraryfolders.vdf, so checking those
+# known roots is effectively instant even on hosts with large mounted disks.
+find_steam_game_dir() {
+  local app_id="$1"
+  local game_dir_name="$2"
+  local override="${3:-}"
+
+  if [[ -n "$override" && -d "$override" ]]; then
+    printf '%s\n' "$override"
+    return 0
+  fi
+
+  local -a steam_roots=(
+    "$HOME/.local/share/Steam"
+    "$HOME/.steam/steam"
+    "$HOME/.var/app/com.valvesoftware.Steam/.steam/steam"
+    "$HOME/.var/app/com.valvesoftware.Steam/data/Steam"
+  )
+
+  local root manifest candidate library_file raw_path library
+  local -A seen=()
+
+  check_library() {
+    local lib="$1"
+    [[ -n "$lib" ]] || return 1
+    [[ -z "${seen[$lib]:-}" ]] || return 1
+    seen["$lib"]=1
+
+    manifest="$lib/steamapps/appmanifest_${app_id}.acf"
+    candidate="$lib/steamapps/common/$game_dir_name"
+
+    if [[ -f "$manifest" && -d "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+    return 1
+  }
+
+  for root in "${steam_roots[@]}"; do
+    [[ -d "$root" ]] || continue
+
+    if check_library "$root"; then
+      return 0
+    fi
+
+    library_file="$root/steamapps/libraryfolders.vdf"
+    [[ -f "$library_file" ]] || continue
+
+    while IFS= read -r raw_path; do
+      library="$raw_path"
+      library="${library//\\\\/\\}"
+      if check_library "$library"; then
+        return 0
+      fi
+    done < <(
+      sed -nE 's/^[[:space:]]*"path"[[:space:]]+"(.*)"[[:space:]]*$/\1/p'         "$library_file"
+    )
+  done
+
+  return 1
+}
