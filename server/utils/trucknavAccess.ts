@@ -7,46 +7,27 @@ function normalizeIp(raw: string | undefined | null): string {
     return value;
 }
 
-function isPrivateIpv4(ip: string): boolean {
-    const parts = ip.split(".").map(Number);
-    if (
-        parts.length !== 4 ||
-        parts.some(part => !Number.isInteger(part) || part < 0 || part > 255)
-    ) {
-        return false;
-    }
-
-    if (parts[0] === 10) return true;
-    if (parts[0] === 192 && parts[1] === 168) return true;
-    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
-    if (parts[0] === 127) return true;
-    return false;
-}
-
-function isLoopback(ip: string): boolean {
-    return ip === "::1" || ip === "127.0.0.1";
-}
-
 export function getTruckNavClientIp(event: H3Event): string {
     const socketIp = normalizeIp(event.node.req.socket.remoteAddress);
+    const forwarded = event.node.req.headers["x-forwarded-for"];
+    const firstForwarded = Array.isArray(forwarded)
+        ? forwarded[0]
+        : forwarded?.split(",")[0];
 
-    // Trust proxy forwarding only when the HTTP connection itself comes from
-    // loopback. This matches the local Caddy/reverse-proxy setup without
-    // allowing an arbitrary remote client to spoof X-Forwarded-For.
-    if (isLoopback(socketIp)) {
-        const forwarded = event.node.req.headers["x-forwarded-for"];
-        const firstForwarded = Array.isArray(forwarded)
-            ? forwarded[0]
-            : forwarded?.split(",")[0];
-
-        const forwardedIp = normalizeIp(firstForwarded);
-        if (forwardedIp) return forwardedIp;
-    }
-
-    return socketIp;
+    return normalizeIp(firstForwarded) || socketIp || "unknown";
 }
 
-export function canManageTruckNavHost(event: H3Event): boolean {
-    const ip = getTruckNavClientIp(event);
-    return isLoopback(ip) || isPrivateIpv4(ip);
+/**
+ * TruckNav Linux is a personal/LAN application in this fork.
+ *
+ * By default every browser that can reach the TruckNav web application can
+ * change shared settings and invoke host maintenance actions. This avoids
+ * brittle client-IP/proxy detection for direct LAN IPs and trucknav.rayco.tech.
+ *
+ * If the service is ever exposed to an untrusted/public network, launch it with
+ * TRUCKNAV_SHARED_ADMIN=0 to disable remote maintenance/settings writes until
+ * authentication is added.
+ */
+export function canManageTruckNavHost(_event: H3Event): boolean {
+    return process.env.TRUCKNAV_SHARED_ADMIN !== "0";
 }
