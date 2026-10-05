@@ -114,6 +114,29 @@ SCRIPT_DIR = REPO_ROOT / "scripts" / "linux"
 ICON_PATH = REPO_ROOT / "assets" / "icon-only.png"
 
 
+def read_trucknav_version() -> str:
+    version_file = REPO_ROOT / "VERSION"
+    if version_file.is_file():
+        raw = version_file.read_text(encoding="utf-8").strip()
+    else:
+        raw = ""
+        package_file = REPO_ROOT / "package.json"
+        if package_file.is_file():
+            try:
+                package = json.loads(package_file.read_text(encoding="utf-8"))
+                raw = str(package.get("version") or "")
+            except (OSError, json.JSONDecodeError):
+                raw = ""
+
+    if not raw:
+        return "dev"
+
+    parts = raw.lstrip("v").split(".")
+    if len(parts) == 3 and parts[2] == "0":
+        return ".".join(parts[:2])
+    return raw.lstrip("v")
+
+
 class Launcher(tk.Tk):
     def __init__(self) -> None:
         # KDE and other desktop shells can match this class with the
@@ -132,9 +155,17 @@ class Launcher(tk.Tk):
         )
         self.dark_mode = tk.BooleanVar(value=self.config_data.get("dark_mode") is True)
         self.stop_trucknav_on_close = tk.BooleanVar(value=False)
+        self.version = read_trucknav_version()
 
         heading = tk.Label(self, text=WINDOW_TITLE, font=("Sans", 18, "bold"))
         heading.pack(pady=(14, 4))
+
+        version_badge = tk.Label(
+            self,
+            text=f"{self.version} {self.active_channel.title()}",
+            font=("Sans", 10, "bold"),
+        )
+        version_badge.place(relx=1.0, x=-14, y=12, anchor="ne")
 
         subtitle = tk.Label(
             self,
