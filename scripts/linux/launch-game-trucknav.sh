@@ -44,7 +44,8 @@ fi
 
 python3 "$REPO_ROOT/scripts/linux/set-shared-game.py" "$game"
 
-# Ensure the game plugin is in place before launching the game.
+# Keep this before game launch so the plugin DLL is already present when the
+# game loads it. Game-directory lookup is fast and uses Steam library metadata.
 bash "$REPO_ROOT/scripts/linux/install-game-telemetry-plugin.sh" "$game"
 
 start_web_app() {
@@ -69,7 +70,8 @@ game_startup_process_matches() {
     return 1
   fi
 
-  pgrep -if "$game_exe" >/dev/null 2>&1     || pgrep -if "SteamLaunch[[:space:]].*AppId=${app_id}" >/dev/null 2>&1
+  pgrep -if "$game_exe" >/dev/null 2>&1 \
+    || pgrep -if "SteamLaunch[[:space:]].*AppId=${app_id}" >/dev/null 2>&1
 }
 
 game_real_process_lines() {
@@ -81,11 +83,14 @@ game_real_process_lines() {
     local lower_comm="${comm,,}"
     local lower_args="${args,,}"
 
-    if [[ "$lower_args" == *"steamlaunch"*"appid=${app_id}"* ]]       || [[ "$lower_args" == *"waitforexitandrun"*"$lower_exe"* ]]; then
+    if [[ "$lower_args" == *"steamlaunch"*"appid=${app_id}"* ]] \
+      || [[ "$lower_args" == *"waitforexitandrun"*"$lower_exe"* ]]; then
       continue
     fi
 
-    if [[ "$lower_comm" == "$lower_exe" ]]       || [[ "$lower_comm" == "${lower_exe%.exe}" ]]       || [[ "$lower_args" == *"$lower_exe"* ]]; then
+    if [[ "$lower_comm" == "$lower_exe" ]] \
+      || [[ "$lower_comm" == "${lower_exe%.exe}" ]] \
+      || [[ "$lower_args" == *"$lower_exe"* ]]; then
       printf '%s %s\n' "$pid" "$args"
     fi
   done
@@ -97,56 +102,58 @@ game_real_process_matches() {
   [[ -n "$matches" ]]
 }
 
-wait_for_game() {
-  local detected=0
-  for ((i = 1; i <= 180; i++)); do
-    if game_startup_process_matches; then
-      detected=1
-      break
-    fi
-    sleep 2
-  done
-
-  [[ "$detected" == "1" ]]
-}
-
 wait_for_telemetry_port() {
-  for ((i = 1; i <= 40; i++)); do
-    if ss -lnt 2>/dev/null | grep -Eq '[:.]30001[[:space:]]'; then
+  for ((i = 1; i <= 80; i++)); do
+    if telemetry_port_open; then
       return 0
     fi
-    sleep 0.5
+    sleep 0.25
   done
   return 1
 }
 
-stop_existing_telemetry_if_wrong_game() {
-  local telemetry_pid current_game=""
+stop_telemetry_helper() {
+  local telemetry_pid
   telemetry_pid="$(pid_from_file "$TELEMETRY_PID_FILE")"
-  [[ -f "$TELEMETRY_GAME_FILE" ]] && current_game="$(cat "$TELEMETRY_GAME_FILE" 2>/dev/null || true)"
 
-  if is_pid_running "$telemetry_pid" && [[ "$current_game" != "$game" ]]; then
-    echo "Switching telemetry from ${current_game:-unknown} to $game_label..."
+  if is_pid_running "$telemetry_pid"; then
     kill "$telemetry_pid" 2>/dev/null || true
-    sleep 2
-    rm -f "$TELEMETRY_PID_FILE" "$TELEMETRY_GAME_FILE"
-    pkill -f "TruckNavTelemetry.exe" 2>/dev/null || true
+    for ((i = 1; i <= 20; i++)); do
+      is_pid_running "$telemetry_pid" || break
+      sleep 0.1
+    done
   fi
+
+  pkill -f "TruckNavTelemetry.exe" 2>/dev/null || true
+
+  for ((i = 1; i <= 20; i++)); do
+    telemetry_port_open || break
+    sleep 0.1
+  done
+
+  rm -f "$TELEMETRY_PID_FILE" "$TELEMETRY_GAME_FILE"
 }
 
 start_telemetry() {
-  stop_existing_telemetry_if_wrong_game
-
   local telemetry_pid current_game=""
   telemetry_pid="$(pid_from_file "$TELEMETRY_PID_FILE")"
   [[ -f "$TELEMETRY_GAME_FILE" ]] && current_game="$(cat "$TELEMETRY_GAME_FILE" 2>/dev/null || true)"
 
-  if is_pid_running "$telemetry_pid" && [[ "$current_game" == "$game" ]]; then
-    echo "TruckNav telemetry helper is already running for $game_label (PID $telemetry_pid)."
+  # Fast path: if the right helper already owns the socket, there is nothing
+  # useful to restart.
+  if [[ "$current_game" == "$game" ]] && telemetry_port_open; then
+    echo "Telemetry bridge is already listening for $game_label on port 30001."
     return
   fi
 
-  rm -f "$TELEMETRY_PID_FILE" "$TELEMETRY_GAME_FILE"
+  if is_pid_running "$telemetry_pid" || telemetry_port_open; then
+    if [[ "$current_game" == "$game" ]]; then
+      echo "Restarting stale $game_label telemetry helper..."
+    else
+      echo "Switching telemetry from ${current_game:-unknown} to $game_label..."
+    fi
+    stop_telemetry_helper
+  fi
 
   echo "Starting telemetry for $game_label with protontricks app id $app_id..."
   protontricks-launch --appid "$app_id" "$TELEMETRY_EXE" >"$PID_DIR/telemetry.log" 2>&1 &
@@ -182,19 +189,19 @@ monitor_game() {
     waiting_checks=$((waiting_checks + 1))
     if ! game_startup_process_matches; then
       missing_checks=$((missing_checks + 1))
-      if ((missing_checks >= 6)); then
-        echo "$game_label process exited before the real game process was observed"
-        echo "Stopping TruckNav"
+      if ((missing_checks >= 60)); then
+        echo "$game_label process was not detected."
+        echo "TruckNav will keep running; use Stop TruckNav when finished."
         return 0
       fi
     else
       missing_checks=0
     fi
 
-    if ((waiting_checks % 12 == 0)); then
-      echo "Waiting for real $game_label game process; ignoring Steam/Proton launcher wrappers"
+    if ((waiting_checks % 10 == 0)); then
+      echo "Waiting for real $game_label game process..."
     fi
-    sleep 5
+    sleep 1
   done
 
   missing_checks=0
@@ -209,7 +216,7 @@ monitor_game() {
         return 0
       fi
     fi
-    sleep 5
+    sleep 2
   done
 }
 
@@ -218,23 +225,22 @@ start_web_app
 
 if game_real_process_matches; then
   echo "$game_label is already running; leaving the game open."
+elif game_startup_process_matches; then
+  echo "$game_label is already starting; not launching a second copy."
 else
   echo "Launching $game_label"
   steam "steam://rungameid/$app_id" >/dev/null 2>&1 &
 fi
 
-echo "Waiting for $game_label"
-if wait_for_game; then
-  echo "$game_label detected. Waiting briefly before telemetry starts..."
-  sleep 15
+# The telemetry helper is a listener and does not need the game to be fully
+# booted first. Start it immediately so game startup and Proton helper startup
+# overlap instead of adding fixed delays.
+echo "Starting telemetry"
+start_telemetry
 
-  echo "Starting telemetry"
-  start_telemetry
+echo "Monitoring $game_label"
+monitor_game
 
-  echo "Monitoring $game_label"
-  monitor_game
-
-  "$REPO_ROOT/scripts/linux/stop-trucknav.sh"
-else
-  echo "$game_label was not detected after launching through Steam. TruckNav web app will keep running; use Stop TruckNav when finished."
-fi
+# Preserve the original combined-launch behavior: once the game exits, stop
+# TruckNav web + telemetry. This never stops Steam or the game itself.
+"$REPO_ROOT/scripts/linux/stop-trucknav.sh"
