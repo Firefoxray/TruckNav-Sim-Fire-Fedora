@@ -160,12 +160,12 @@ class Launcher(tk.Tk):
         heading = tk.Label(self, text=WINDOW_TITLE, font=("Sans", 18, "bold"))
         heading.pack(pady=(14, 4))
 
-        version_badge = tk.Label(
+        self.version_badge = tk.Label(
             self,
             text=f"{self.version} {self.active_channel.title()}",
             font=("Sans", 10, "bold"),
         )
-        version_badge.place(relx=1.0, x=-14, y=12, anchor="ne")
+        self.version_badge.place(relx=1.0, x=-14, y=12, anchor="ne")
 
         subtitle = tk.Label(
             self,
@@ -356,6 +356,12 @@ class Launcher(tk.Tk):
         self.configure(bg=theme["window_bg"])
         for child in self.winfo_children():
             self.apply_theme_to_widget(child, theme)
+
+        if hasattr(self, "version_badge"):
+            self.version_badge.configure(
+                bg=theme["panel_bg"],
+                fg=theme["muted_fg"],
+            )
 
     def apply_theme_to_widget(self, widget: tk.Widget, theme: dict[str, str]) -> None:
         if isinstance(widget, tk.Button):
