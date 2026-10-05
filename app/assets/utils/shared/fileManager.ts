@@ -21,9 +21,16 @@ async function hasBundledDevMap(mapName: string): Promise<boolean> {
     if (!process.dev || typeof window === "undefined") return false;
 
     try {
-        const markerUrl = `${window.location.origin}/data/${mapName}/TRUCKNAV_TEST_BUILD.txt`;
-        const response = await fetch(markerUrl, { cache: "no-store" });
-        return response.ok;
+        for (const marker of [
+            "TRUCKNAV_TEST_BUILD.txt",
+            "TRUCKNAV_BUNDLED_MAP.txt",
+        ]) {
+            const markerUrl =
+                `${window.location.origin}/data/${mapName}/${marker}`;
+            const response = await fetch(markerUrl, { cache: "no-store" });
+            if (response.ok) return true;
+        }
+        return false;
     } catch {
         return false;
     }
