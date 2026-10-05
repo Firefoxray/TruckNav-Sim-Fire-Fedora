@@ -6,6 +6,8 @@ const props = defineProps<{
     destinationName: string;
     routeEta: string;
     routeDistance: number;
+    nextStopDistance: number | null;
+    nextStopEta: string;
     isNavigating: boolean;
     onStopNavigation: () => void;
     onStartNavigation: () => void;
@@ -19,6 +21,12 @@ const progress = ref(100);
 
 const routeDistanceConverted = computed(() =>
     kmToUserUnits(props.routeDistance),
+);
+
+const nextStopDistanceConverted = computed(() =>
+    props.nextStopDistance == null
+        ? null
+        : kmToUserUnits(props.nextStopDistance),
 );
 
 const emit = defineEmits<{
@@ -87,6 +95,8 @@ watch(
                     :route-distance-converted="routeDistanceConverted"
                     :distance-unit="distanceUnit"
                     :route-eta="routeEta"
+                    :next-stop-distance-converted="nextStopDistanceConverted"
+                    :next-stop-eta="nextStopEta"
                 />
             </Transition>
 
@@ -113,6 +123,24 @@ watch(
                 <div class="separator"></div>
 
                 <div class="full-stats">
+                    <div
+                        v-if="nextStopDistanceConverted != null"
+                        class="stat-block next-stop-stat"
+                    >
+                        <Icon
+                            name="lucide:map-pin"
+                            size="26"
+                            class="icon-dist"
+                        />
+                        <div>
+                            <div class="value">
+                                {{ nextStopDistanceConverted }}
+                                {{ distanceUnit }} · {{ nextStopEta }}
+                            </div>
+                            <div class="label">Next stop</div>
+                        </div>
+                    </div>
+
                     <div class="stat-block">
                         <Icon
                             name="lucide:clock-check"
