@@ -158,7 +158,16 @@ Euro Truck Simulator 2/bin/win_x64/plugins/
 
 before starting the game.
 
-This is intended as a compatibility/playable path. The maintainable fresh-map
-pipeline that exists for ATS still needs to be generalized from `usa` to the
-ETS2 `europe` map before ETS2 map rebuild/update tracking can be considered
-complete.
+The bundled map is only a fallback so ETS2 can launch immediately. TruckNav
+Linux 1.3 also includes a fresh Europe rebuild path that parses the installed
+ETS2 files, generates Europe routing/visual source data, exports TruckNav
+routing binaries, builds PMTiles/sprites/cities/companies, writes a versioned
+ETS2 map manifest, and installs the result into `public/data/ets2`.
+
+The one-command rebuild is:
+
+```bash
+bash scripts/map-data/rebuild-ets2-trucknav-runtime.sh
+```
+
+The web control center's **Rebuild ETS2 Map** button runs the same pipeline.
