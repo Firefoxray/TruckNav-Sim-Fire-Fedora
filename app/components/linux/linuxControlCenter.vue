@@ -5,6 +5,8 @@ interface LinuxStatus {
         clientIp?: string;
     };
     app: {
+        version?: string;
+        channel?: string;
         branch: string;
         commit: string;
         shortCommit: string;
