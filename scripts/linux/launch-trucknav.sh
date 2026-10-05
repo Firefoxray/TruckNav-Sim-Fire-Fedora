@@ -23,6 +23,16 @@ else
   echo "$!" > "$WEB_PID_FILE"
 fi
 
+wait_for_telemetry_port() {
+  for ((i = 1; i <= 40; i++)); do
+    if ss -lnt 2>/dev/null | grep -Eq '[:.]30001[[:space:]]'; then
+      return 0
+    fi
+    sleep 0.5
+  done
+  return 1
+}
+
 telemetry_pid="$(pid_from_file "$TELEMETRY_PID_FILE")"
 if is_pid_running "$telemetry_pid"; then
   echo "TruckNav telemetry helper is already running (PID $telemetry_pid)."
@@ -30,6 +40,15 @@ else
   echo "Starting TruckNav telemetry helper with protontricks app id $TRUCKNAV_ATS_APP_ID..."
   protontricks-launch --appid "$TRUCKNAV_ATS_APP_ID" "$TELEMETRY_EXE" >"$PID_DIR/telemetry.log" 2>&1 &
   echo "$!" > "$TELEMETRY_PID_FILE"
+
+  if wait_for_telemetry_port; then
+    echo "Telemetry bridge is listening on port 30001."
+  else
+    echo "Telemetry bridge did not open port 30001." >&2
+    echo "Last telemetry log lines:" >&2
+    tail -n 20 "$PID_DIR/telemetry.log" >&2 || true
+    exit 1
+  fi
 fi
 
 echo "TruckNav is starting. Open $TRUCKNAV_URL"
