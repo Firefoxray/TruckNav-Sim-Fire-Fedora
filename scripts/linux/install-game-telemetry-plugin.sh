@@ -29,31 +29,14 @@ if [[ ! -f "$source_dll" ]]; then
   exit 3
 fi
 
-find_game_dir() {
-  local override=""
-  if [[ "$env_dir_var" == "TRUCKNAV_ATS_DIR" ]]; then
-    override="${TRUCKNAV_ATS_DIR:-}"
-  else
-    override="${TRUCKNAV_ETS2_DIR:-}"
-  fi
+override=""
+if [[ "$env_dir_var" == "TRUCKNAV_ATS_DIR" ]]; then
+  override="${TRUCKNAV_ATS_DIR:-}"
+else
+  override="${TRUCKNAV_ETS2_DIR:-}"
+fi
 
-  if [[ -n "$override" && -d "$override" ]]; then
-    printf '%s\n' "$override"
-    return 0
-  fi
-
-  local manifest
-  manifest="$(find     "$HOME/.local/share/Steam"     "$HOME/.steam"     "$HOME/.var/app/com.valvesoftware.Steam"     /mnt     "/run/media/$USER"     -maxdepth 7 -type f -name "appmanifest_${app_id}.acf"     -print 2>/dev/null | head -n 1 || true)"
-
-  [[ -n "$manifest" ]] || return 1
-
-  local candidate
-  candidate="$(dirname "$manifest")/common/$game_dir_name"
-  [[ -d "$candidate" ]] || return 1
-  printf '%s\n' "$candidate"
-}
-
-game_dir="$(find_game_dir || true)"
+game_dir="$(find_steam_game_dir "$app_id" "$game_dir_name" "$override" || true)"
 if [[ -z "$game_dir" ]]; then
   echo "$game_label is not installed or could not be found." >&2
   exit 4
