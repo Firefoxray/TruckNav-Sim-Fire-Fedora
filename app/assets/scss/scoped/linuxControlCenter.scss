@@ -212,3 +212,20 @@
         color: #bbf7d0;
     }
 }
+
+
+.linux-heading-right {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.version-channel {
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    opacity: 0.82;
+}
