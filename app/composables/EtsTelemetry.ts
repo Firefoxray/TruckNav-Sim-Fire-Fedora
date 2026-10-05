@@ -50,6 +50,8 @@ let lastPosition: [number, number] | null = null;
 let headingOffset = 0;
 
 let socket: WebSocket | null = null;
+let relayPollTimer: ReturnType<typeof setInterval> | null = null;
+let relayPollInFlight = false;
 
 function sendDiscordRpcState(payload: {
     game: string;
@@ -87,11 +89,60 @@ export function useEtsTelemetry() {
     const maxSamples = 120;
 
     function startTelemetry(onUpdate?: (data: TelemetryUpdate) => void) {
+        const canUseServerRelay =
+            !isCapacitor &&
+            typeof window !== "undefined" &&
+            (window.location.protocol === "http:" ||
+                window.location.protocol === "https:");
+
+        if (canUseServerRelay) {
+            if (relayPollTimer) return;
+
+            const pollRelay = async () => {
+                if (relayPollInFlight) return;
+                relayPollInFlight = true;
+
+                try {
+                    const response = await fetch("/api/telemetry", {
+                        cache: "no-store",
+                    });
+
+                    if (!response.ok) {
+                        resetDataOnDisconnected(onUpdate);
+                        return;
+                    }
+
+                    const relay = await response.json();
+                    if (!relay?.connected || !relay?.data) {
+                        resetDataOnDisconnected(onUpdate);
+                        return;
+                    }
+
+                    const data = relay.data as TelemetryPacket;
+                    if (
+                        data.game?.toLowerCase() !==
+                        settings.value.selectedGame
+                    ) {
+                        resetDataOnDisconnected(onUpdate);
+                        return;
+                    }
+
+                    processData(data, onUpdate);
+                } catch {
+                    resetDataOnDisconnected(onUpdate);
+                } finally {
+                    relayPollInFlight = false;
+                }
+            };
+
+            void pollRelay();
+            relayPollTimer = setInterval(pollRelay, 150);
+            return;
+        }
+
         if (socket) return;
 
-        const ip = isCapacitor
-            ? settings.value.savedIP
-            : window.location.hostname;
+        const ip = settings.value.savedIP || window.location.hostname;
         const url = `ws://${ip}:30001`;
 
         socket = new WebSocket(url);
@@ -127,6 +178,12 @@ export function useEtsTelemetry() {
     }
 
     function stopTelemetry() {
+        if (relayPollTimer) {
+            clearInterval(relayPollTimer);
+            relayPollTimer = null;
+        }
+        relayPollInFlight = false;
+
         if (socket) {
             socket.onclose = null;
             socket.close();
