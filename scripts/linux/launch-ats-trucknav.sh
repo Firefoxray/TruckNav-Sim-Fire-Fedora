@@ -12,9 +12,10 @@ if [[ ! -f "$TELEMETRY_EXE" ]]; then
   exit 1
 fi
 
+export TRUCKNAV_REPO_ROOT="$REPO_ROOT"
+
 start_web_app() {
   cd "$REPO_ROOT"
-export TRUCKNAV_REPO_ROOT="$REPO_ROOT"
 
   local web_pid
   web_pid="$(pid_from_file "$WEB_PID_FILE")"
@@ -115,77 +116,13 @@ start_telemetry() {
 monitor_ats() {
   local missing_checks=0
   local waiting_checks=0
-  local real_process_line
+  local real_process_lines_output=""
+  local real_process_line=""
 
   while true; do
-    real_process_line="$(ats_real_process_lines)"
-    real_process_line="${real_process_line%%
-    if [[ -n "$real_process_line" ]]; then
-      echo "ATS game process detected: $real_process_line"
-      echo "Monitoring real ATS process"
-      break
-    fi
+    real_process_lines_output="$(ats_real_process_lines)"
+    real_process_line="${real_process_lines_output%%$'\n'*}"
 
-    waiting_checks=$((waiting_checks + 1))
-    if ! ats_startup_process_matches; then
-      missing_checks=$((missing_checks + 1))
-      if ((missing_checks >= 6)); then
-        echo "ATS process exited before the real game process was observed"
-        echo "Stopping TruckNav"
-        return 0
-      fi
-    else
-      missing_checks=0
-    fi
-
-    if ((waiting_checks % 12 == 0)); then
-      echo "Waiting for real ATS game process; ignoring Steam/Proton launcher wrappers"
-    fi
-    sleep 5
-  done
-
-  missing_checks=0
-  while true; do
-    if ats_real_process_matches; then
-      missing_checks=0
-    else
-      missing_checks=$((missing_checks + 1))
-      if ((missing_checks >= 3)); then
-        echo "ATS process exited"
-        echo "Stopping TruckNav"
-        return 0
-      fi
-    fi
-    sleep 5
-  done
-}
-
-echo "Starting TruckNav web app"
-start_web_app
-
-if ats_real_process_matches; then
-  echo "ATS is already running; leaving the game open."
-else
-  echo "Launching ATS"
-  steam "steam://rungameid/$TRUCKNAV_ATS_APP_ID" >/dev/null 2>&1 &
-fi
-
-echo "Waiting for ATS"
-if wait_for_ats; then
-  echo "ATS detected. Waiting briefly before telemetry starts..."
-  sleep 15
-
-  echo "Starting telemetry"
-  start_telemetry
-
-  echo "Monitoring ATS"
-  monitor_ats
-
-  "$REPO_ROOT/scripts/linux/stop-trucknav.sh"
-else
-  echo "ATS was not detected after launching through Steam. TruckNav web app will keep running; use Stop TruckNav when finished."
-fi
-\n'*}"
     if [[ -n "$real_process_line" ]]; then
       echo "ATS game process detected: $real_process_line"
       echo "Monitoring real ATS process"
