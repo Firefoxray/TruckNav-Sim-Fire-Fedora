@@ -10,6 +10,7 @@ import {
     defineEventHandler,
     readBody,
 } from "h3";
+import { canManageTruckNavHost } from "../../utils/trucknavAccess";
 
 function settingsPath(): string {
     const configRoot =
@@ -18,6 +19,14 @@ function settingsPath(): string {
 }
 
 export default defineEventHandler(async (event) => {
+    if (!canManageTruckNavHost(event)) {
+        throw createError({
+            statusCode: 403,
+            statusMessage:
+                "TruckNav settings can only be changed from the private LAN.",
+        });
+    }
+
     const body = await readBody<{ settings?: unknown }>(event);
 
     if (
