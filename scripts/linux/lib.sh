@@ -2,6 +2,8 @@
 set -euo pipefail
 
 TRUCKNAV_ATS_APP_ID="${TRUCKNAV_ATS_APP_ID:-270880}"
+TRUCKNAV_ETS2_APP_ID="${TRUCKNAV_ETS2_APP_ID:-227300}"
+TRUCKNAV_GAME="${TRUCKNAV_GAME:-ats}"
 TRUCKNAV_URL="${TRUCKNAV_URL:-http://127.0.0.1:3000/}"
 
 find_repo_root() {
@@ -34,6 +36,7 @@ TELEMETRY_EXE="$REPO_ROOT/electron/bin/TruckNavTelemetry.exe"
 PID_DIR="${XDG_RUNTIME_DIR:-/tmp}/trucknav-sim"
 WEB_PID_FILE="$PID_DIR/web.pid"
 TELEMETRY_PID_FILE="$PID_DIR/telemetry.pid"
+TELEMETRY_GAME_FILE="$PID_DIR/telemetry.game"
 mkdir -p "$PID_DIR"
 
 require_command() {
