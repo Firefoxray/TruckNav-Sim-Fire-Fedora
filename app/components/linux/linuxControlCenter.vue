@@ -202,8 +202,8 @@ onUnmounted(() => {
         >
             <Icon name="lucide:shield-alert" size="16" />
             <span>
-                View-only connection. Maintenance actions are available only
-                from the private LAN.
+                View-only connection. Shared administration is disabled on
+                the TruckNav host.
             </span>
         </div>
         <div
@@ -212,7 +212,7 @@ onUnmounted(() => {
         >
             <Icon name="lucide:wifi" size="16" />
             <span>
-                LAN management enabled
+                Shared management enabled
                 <template v-if="status.access?.clientIp">
                     · {{ status.access.clientIp }}
                 </template>
