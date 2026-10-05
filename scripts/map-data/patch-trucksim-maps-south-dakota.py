@@ -199,3 +199,86 @@ if new_roundabout_block not in round_text:
     print("Patched ATS 1.61 composite roundabout compatibility.")
 else:
     print("ATS 1.61 composite roundabout compatibility patch already applied.")
+
+
+# Current ETS2 definitions can contain C-style block comments. The pinned SII
+# lexer only ignores // and # comments, so text inside /* ... */ is tokenized
+# as normal properties and parsing aborts (for example on a line beginning
+# with "This"). Teach the lexer to ignore block comments too.
+sii_parser = (
+    root
+    / "packages"
+    / "clis"
+    / "parser"
+    / "game-files"
+    / "sii-parser.ts"
+)
+if not sii_parser.is_file():
+    raise SystemExit(f"missing expected file: {sii_parser}")
+
+sii_text = sii_parser.read_text(encoding="utf-8")
+old_comment_token = """const Comment = createToken({
+  name: 'Comment',
+  pattern: /(\\/\\/|#).*/,
+  group: Lexer.SKIPPED,
+});
+"""
+new_comment_token = """const Comment = createToken({
+  name: 'Comment',
+  // SCS definition files use line comments and, in current ETS2 data,
+  // C-style block comments as well.
+  pattern: /(?:\\/\\/|#).*|\\/\\*[\\s\\S]*?\\*\\//,
+  group: Lexer.SKIPPED,
+});
+"""
+
+if new_comment_token not in sii_text:
+    if old_comment_token not in sii_text:
+        raise SystemExit(
+            "truckermudgeon/maps changed unexpectedly; could not patch "
+            "current ETS2 SII block-comment compatibility"
+        )
+    sii_text = sii_text.replace(old_comment_token, new_comment_token, 1)
+    sii_parser.write_text(sii_text, encoding="utf-8")
+    print("Patched current ETS2 SII block-comment compatibility.")
+else:
+    print("ETS2 SII block-comment compatibility patch already applied.")
+
+
+# Make parser failures self-identifying. Upstream logs the path immediately
+# before the exception, but the thrown Error itself contains no path, which
+# makes copied tail output unnecessarily hard to diagnose.
+convert_sii = (
+    root
+    / "packages"
+    / "clis"
+    / "parser"
+    / "game-files"
+    / "convert-sii-to-json.ts"
+)
+if not convert_sii.is_file():
+    raise SystemExit(f"missing expected file: {convert_sii}")
+
+convert_text = convert_sii.read_text(encoding="utf-8")
+old_parse_throw = """    throw new Error();
+  }
+
+  const json = jsonConverter.convert(res.cst);
+"""
+new_parse_throw = """    throw new Error(`failed to parse SII file: ${siiPath}`);
+  }
+
+  const json = jsonConverter.convert(res.cst);
+"""
+
+if new_parse_throw not in convert_text:
+    if old_parse_throw not in convert_text:
+        raise SystemExit(
+            "truckermudgeon/maps changed unexpectedly; could not patch "
+            "SII parser error diagnostics"
+        )
+    convert_text = convert_text.replace(old_parse_throw, new_parse_throw, 1)
+    convert_sii.write_text(convert_text, encoding="utf-8")
+    print("Patched SII parser error diagnostics.")
+else:
+    print("SII parser error diagnostics patch already applied.")
