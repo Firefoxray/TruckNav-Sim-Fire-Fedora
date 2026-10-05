@@ -2,11 +2,18 @@
 defineProps<{
     onClick: () => void;
     isActive?: boolean;
+    title?: string;
+    ariaLabel?: string;
 }>();
 </script>
 
 <template>
-    <button class="option-btn" @click.prevent="onClick">
+    <button
+        class="option-btn"
+        :title="title"
+        :aria-label="ariaLabel || title"
+        @click.prevent="onClick"
+    >
         <slot />
     </button>
 </template>
