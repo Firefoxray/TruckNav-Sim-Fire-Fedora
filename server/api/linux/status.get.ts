@@ -21,6 +21,33 @@ export default defineEventHandler((event) => {
 
     let branch = "unknown";
     let commit = "";
+
+    let displayVersion = "dev";
+    const versionPath = join(repoRoot, "VERSION");
+    if (existsSync(versionPath)) {
+        displayVersion =
+            readFileSync(versionPath, "utf8").trim().replace(/^v/, "") ||
+            "dev";
+    } else {
+        const packagePath = join(repoRoot, "package.json");
+        if (existsSync(packagePath)) {
+            try {
+                const packageJson = JSON.parse(
+                    readFileSync(packagePath, "utf8"),
+                );
+                displayVersion = String(packageJson?.version || "dev").replace(
+                    /^v/,
+                    "",
+                );
+            } catch {
+                displayVersion = "dev";
+            }
+        }
+    }
+
+    if (/^\d+\.\d+\.0$/.test(displayVersion)) {
+        displayVersion = displayVersion.replace(/\.0$/, "");
+    }
     let upstream: string | null = null;
     let ahead = 0;
     let behind = 0;
@@ -258,6 +285,8 @@ export default defineEventHandler((event) => {
             clientIp: getTruckNavClientIp(event),
         },
         app: {
+            version: displayVersion,
+            channel: branch === "master" ? "Stable" : "Testing",
             branch,
             commit,
             shortCommit: commit.slice(0, 10),
