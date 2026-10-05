@@ -122,8 +122,8 @@ class Launcher(tk.Tk):
         super().__init__(className=WINDOW_CLASS)
         self.title(WINDOW_TITLE)
         self.set_window_icon()
-        self.geometry("720x560")
-        self.minsize(640, 480)
+        self.geometry("720x620")
+        self.minsize(640, 520)
         self.processes: list[subprocess.Popen[str]] = []
         self.config_data = load_config()
         self.active_channel = str(
@@ -156,6 +156,17 @@ class Launcher(tk.Tk):
             anchor="w",
         ).pack(side="left")
 
+        update_button = tk.Button(
+            channel_frame,
+            text="Update TruckNav",
+            command=lambda: self.run_script(
+                "update-trucknav-linux.sh",
+                wait=False,
+            ),
+            padx=12,
+        )
+        update_button.pack(side="right", padx=(6, 0))
+
         for channel in ("stable", "testing"):
             repo = self.channel_repo(channel)
             button = tk.Button(
@@ -172,13 +183,23 @@ class Launcher(tk.Tk):
         button_frame.pack(fill="x", padx=18)
 
         buttons = [
-            ("Update TruckNav", lambda: self.run_script("update-trucknav-linux.sh", wait=False)),
-            ("Launch UI only (no game)", lambda: self.run_script("launch-web-only.sh", wait=False)),
-            ("Launch TruckNav + telemetry", lambda: self.run_script("launch-trucknav.sh", wait=False)),
-            ("Launch ATS + TruckNav together", lambda: self.run_script("launch-ats-trucknav.sh", wait=False)),
-            ("Stop TruckNav", lambda: self.run_script("stop-trucknav.sh", wait=True)),
+            (
+                "Launch TruckNav",
+                lambda: self.run_script("launch-trucknav.sh", wait=False),
+            ),
+            (
+                "Launch ATS + TruckNav together",
+                lambda: self.run_script("launch-ats-trucknav.sh", wait=False),
+            ),
+            (
+                "Stop TruckNav",
+                lambda: self.run_script("stop-trucknav.sh", wait=True),
+            ),
             ("Open TruckNav in browser", self.open_browser),
-            ("Check dependencies/status", lambda: self.run_script("check-status.sh", wait=True)),
+            (
+                "Check dependencies/status",
+                lambda: self.run_script("check-status.sh", wait=True),
+            ),
             ("Install/repair Fedora setup", self.install_fedora),
         ]
 
@@ -215,7 +236,7 @@ class Launcher(tk.Tk):
         )
         close_note.pack(fill="x", pady=(2, 0))
 
-        self.output = scrolledtext.ScrolledText(self, height=14, state="disabled")
+        self.output = scrolledtext.ScrolledText(self, height=18, state="disabled")
         self.output.pack(fill="both", expand=True, padx=18, pady=(8, 14))
 
         self.apply_theme()
