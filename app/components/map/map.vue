@@ -82,6 +82,8 @@ const {
     destinationName,
     routeDistance,
     routeEta,
+    nextStopDistance,
+    nextStopEta,
     isCalculating: isCalculatingRoute,
     isWorkerReady,
     initWorkerData,
@@ -627,6 +629,8 @@ const onCancelRoute = () => {
                             v-model:is-sheet-hidden="isSheetHidden"
                             :route-distance="routeDistance"
                             :route-eta="routeEta"
+                            :next-stop-distance="nextStopDistance"
+                            :next-stop-eta="nextStopEta"
                             :speed-limit="speedLimit"
                             :truck-speed="truckSpeed"
                         />
