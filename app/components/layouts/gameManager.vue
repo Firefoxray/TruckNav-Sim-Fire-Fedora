@@ -148,10 +148,7 @@ function toggleModPanel() {
         </div>
 
         <div class="content" :class="{ 'linux-content': isLinuxLocalWeb }">
-            <LinuxControlCenter
-                v-if="isWeb"
-                :local-actions="isLinuxLocalWeb"
-            />
+            <LinuxControlCenter v-if="isWeb" />
 
             <div class="top-content">
                 <GameSelection v-model="selectedGame" :width="150" />
