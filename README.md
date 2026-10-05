@@ -4,11 +4,9 @@
 
 The goal is to keep TruckNav easy to run on Linux, easy to update, and able to rebuild current map data when SCS updates the games.
 
-<!--
 <p align="center">
   <img src="docs/images/trucknav-linux-launcher.png" alt="TruckNav Linux Launcher" width="720">
 </p>
--->
 
 ## Status
 
