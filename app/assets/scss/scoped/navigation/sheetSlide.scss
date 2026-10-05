@@ -145,6 +145,8 @@ $compact-bar-height: 35px;
 .full-stats {
     display: flex;
     justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 1rem 2rem;
     margin-bottom: 25px;
 
     .stat-block {
