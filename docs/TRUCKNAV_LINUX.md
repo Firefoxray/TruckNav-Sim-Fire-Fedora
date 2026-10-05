@@ -137,3 +137,28 @@ branch and **1.1 Stable** on `master`.
 
 Patch/minor/major version changes are made by updating `VERSION`; the launcher
 and web control center read the file directly.
+
+
+## ETS2 compatibility mode
+
+TruckNav Linux 1.2 adds a game selector for ATS and ETS2.
+
+ETS2 currently uses the existing TruckNav ETS2 map bundle. The Testing
+checkout stages that bundle from the Stable checkout when ETS2 is launched.
+Live telemetry uses Steam app id `227300` and the same TruckNav telemetry
+bridge used by ATS.
+
+The current telemetry path uses the Windows SCS plugin and
+`TruckNavTelemetry.exe`, so ETS2 must be configured to run through Proton.
+The launcher installs `electron/bin/scs-telemetry.dll` into:
+
+```
+Euro Truck Simulator 2/bin/win_x64/plugins/
+```
+
+before starting the game.
+
+This is intended as a compatibility/playable path. The maintainable fresh-map
+pipeline that exists for ATS still needs to be generalized from `usa` to the
+ETS2 `europe` map before ETS2 map rebuild/update tracking can be considered
+complete.
