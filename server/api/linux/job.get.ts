@@ -24,6 +24,7 @@ export default defineEventHandler(() => {
 
     let state: {
         action: "update-app" | "rebuild-map";
+        game?: "ats" | "ets2" | null;
         pid: number;
         startedAt?: string;
     };
@@ -55,6 +56,7 @@ export default defineEventHandler(() => {
 
     return {
         action: state.action,
+        game: state.game || null,
         running,
         exitCode: running ? null : exitCode ?? 1,
         startedAt: state.startedAt,
