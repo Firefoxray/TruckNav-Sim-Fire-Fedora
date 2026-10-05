@@ -2,6 +2,39 @@
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
+game="$TRUCKNAV_GAME"
+wait_mode=0
+
+for arg in "$@"; do
+  case "$arg" in
+    ats|ets2)
+      game="$arg"
+      ;;
+    --wait)
+      wait_mode=1
+      ;;
+    *)
+      echo "Usage: $0 [ats|ets2] [--wait]" >&2
+      exit 2
+      ;;
+  esac
+done
+
+case "$game" in
+  ats)
+    game_label="ATS"
+    app_id="$TRUCKNAV_ATS_APP_ID"
+    ;;
+  ets2)
+    game_label="ETS2"
+    app_id="$TRUCKNAV_ETS2_APP_ID"
+    ;;
+  *)
+    echo "Unknown game: $game" >&2
+    exit 2
+    ;;
+esac
+
 require_command node "Install Node.js with: sudo dnf install nodejs npm"
 require_command npm "Install npm with: sudo dnf install npm"
 require_command protontricks-launch "Install protontricks with: sudo dnf install protontricks"
@@ -13,6 +46,15 @@ fi
 
 cd "$REPO_ROOT"
 export TRUCKNAV_REPO_ROOT="$REPO_ROOT"
+export TRUCKNAV_GAME="$game"
+
+if [[ "$game" == "ets2" && ! -f "$REPO_ROOT/public/data/ets2/TRUCKNAV_BUNDLED_MAP.txt" ]]; then
+  echo "Preparing bundled ETS2 map..."
+  bash "$REPO_ROOT/scripts/linux/prepare-ets2-bundled-map.sh"
+fi
+
+python3 "$REPO_ROOT/scripts/linux/set-shared-game.py" "$game"
+bash "$REPO_ROOT/scripts/linux/install-game-telemetry-plugin.sh" "$game"
 
 web_pid="$(pid_from_file "$WEB_PID_FILE")"
 if is_pid_running "$web_pid"; then
@@ -34,12 +76,25 @@ wait_for_telemetry_port() {
 }
 
 telemetry_pid="$(pid_from_file "$TELEMETRY_PID_FILE")"
-if is_pid_running "$telemetry_pid"; then
-  echo "TruckNav telemetry helper is already running (PID $telemetry_pid)."
+current_game=""
+[[ -f "$TELEMETRY_GAME_FILE" ]] && current_game="$(cat "$TELEMETRY_GAME_FILE" 2>/dev/null || true)"
+
+if is_pid_running "$telemetry_pid" && [[ "$current_game" != "$game" ]]; then
+  echo "Switching telemetry from ${current_game:-unknown} to $game_label..."
+  kill "$telemetry_pid" 2>/dev/null || true
+  sleep 2
+  rm -f "$TELEMETRY_PID_FILE" "$TELEMETRY_GAME_FILE"
+  pkill -f "TruckNavTelemetry.exe" 2>/dev/null || true
+  telemetry_pid=""
+fi
+
+if is_pid_running "$telemetry_pid" && [[ "$current_game" == "$game" ]]; then
+  echo "TruckNav telemetry helper is already running for $game_label (PID $telemetry_pid)."
 else
-  echo "Starting TruckNav telemetry helper with protontricks app id $TRUCKNAV_ATS_APP_ID..."
-  protontricks-launch --appid "$TRUCKNAV_ATS_APP_ID" "$TELEMETRY_EXE" >"$PID_DIR/telemetry.log" 2>&1 &
+  echo "Starting TruckNav telemetry helper for $game_label with protontricks app id $app_id..."
+  protontricks-launch --appid "$app_id" "$TELEMETRY_EXE" >"$PID_DIR/telemetry.log" 2>&1 &
   echo "$!" > "$TELEMETRY_PID_FILE"
+  printf '%s\n' "$game" > "$TELEMETRY_GAME_FILE"
 
   if wait_for_telemetry_port; then
     echo "Telemetry bridge is listening on port 30001."
@@ -51,9 +106,9 @@ else
   fi
 fi
 
-echo "TruckNav is starting. Open $TRUCKNAV_URL"
+echo "TruckNav is starting for $game_label. Open $TRUCKNAV_URL"
 
-if [[ "${1:-}" == "--wait" ]]; then
+if [[ "$wait_mode" == "1" ]]; then
   cleanup() {
     "$REPO_ROOT/scripts/linux/stop-trucknav.sh" >/dev/null 2>&1 || true
   }
