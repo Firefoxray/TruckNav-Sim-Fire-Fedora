@@ -1,5 +1,9 @@
 <script lang="ts" setup>
 interface LinuxStatus {
+    access?: {
+        maintenanceAllowed?: boolean;
+        clientIp?: string;
+    };
     app: {
         branch: string;
         commit: string;
@@ -39,20 +43,15 @@ interface LinuxJob {
     logTail: string[];
 }
 
-const props = withDefaults(
-    defineProps<{
-        localActions?: boolean;
-    }>(),
-    {
-        localActions: true,
-    },
-);
-
 const status = ref<LinuxStatus | null>(null);
 const loading = ref(false);
 const actionLoading = ref<"update-app" | "rebuild-map" | null>(null);
 const job = ref<LinuxJob | null>(null);
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+const maintenanceAllowed = computed(
+    () => status.value?.access?.maintenanceAllowed === true,
+);
 
 const appStateText = computed(() => {
     if (!status.value) return "Checking...";
@@ -187,8 +186,8 @@ onUnmounted(() => {
             </div>
             <div class="linux-icon">
                 <Icon
-                    :name="
-                        props.localActions
+:name="
+                        maintenanceAllowed
                             ? 'lucide:square-terminal'
                             : 'lucide:laptop'
                     "
@@ -197,11 +196,26 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <div v-if="!props.localActions" class="remote-view-note">
+        <div
+            v-if="status && !maintenanceAllowed"
+            class="remote-view-note"
+        >
+            <Icon name="lucide:shield-alert" size="16" />
+            <span>
+                View-only connection. Maintenance actions are available only
+                from the private LAN.
+            </span>
+        </div>
+        <div
+            v-else-if="status && maintenanceAllowed"
+            class="remote-view-note lan-enabled"
+        >
             <Icon name="lucide:wifi" size="16" />
             <span>
-                Remote view from another Linux device. Status is live, but
-                update/rebuild commands must be run on the TruckNav host.
+                LAN management enabled
+                <template v-if="status.access?.clientIp">
+                    · {{ status.access.clientIp }}
+                </template>
             </span>
         </div>
 
@@ -271,7 +285,7 @@ onUnmounted(() => {
         <div class="linux-actions">
             <button
                 class="linux-action"
-                :disabled="loading || !!actionLoading || !props.localActions"
+                :disabled="loading || !!actionLoading || !maintenanceAllowed"
                 @click="refreshStatus(true)"
             >
                 <Icon
@@ -288,7 +302,7 @@ onUnmounted(() => {
             <button
                 class="linux-action primary"
                 :disabled="
-                    !props.localActions ||
+                    !maintenanceAllowed ||
                     !!actionLoading ||
                     !status?.app.updateAvailable ||
                     status?.app.dirty
@@ -308,7 +322,7 @@ onUnmounted(() => {
 
             <button
                 class="linux-action"
-                :disabled="!!actionLoading || !props.localActions"
+                :disabled="!!actionLoading || !maintenanceAllowed"
                 @click="startAction('rebuild-map')"
             >
                 <Icon
