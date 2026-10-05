@@ -13,6 +13,7 @@ from pathlib import Path
 from tkinter import messagebox, scrolledtext
 
 ATS_APP_ID = os.environ.get("TRUCKNAV_ATS_APP_ID", "270880")
+ETS2_APP_ID = os.environ.get("TRUCKNAV_ETS2_APP_ID", "227300")
 TRUCKNAV_URL = os.environ.get("TRUCKNAV_URL", "http://127.0.0.1:3000/")
 WINDOW_CLASS = "TruckNavLinuxLauncher"
 WINDOW_TITLE = "TruckNav Linux Launcher"
@@ -155,6 +156,11 @@ class Launcher(tk.Tk):
         )
         self.dark_mode = tk.BooleanVar(value=self.config_data.get("dark_mode") is True)
         self.stop_trucknav_on_close = tk.BooleanVar(value=False)
+        self.selected_game = tk.StringVar(
+            value=str(self.config_data.get("selected_game") or "ats")
+        )
+        if self.selected_game.get() not in {"ats", "ets2"}:
+            self.selected_game.set("ats")
         self.version = read_trucknav_version()
 
         heading = tk.Label(self, text=WINDOW_TITLE, font=("Sans", 18, "bold"))
@@ -167,16 +173,13 @@ class Launcher(tk.Tk):
         )
         self.version_badge.place(relx=1.0, x=-14, y=12, anchor="ne")
 
-        subtitle = tk.Label(
+        self.subtitle = tk.Label(
             self,
-            text=(
-                f"Channel: {self.active_channel.title()}\n"
-                f"Repo: {REPO_ROOT}\n"
-                f"ATS Steam app id: {ATS_APP_ID}"
-            ),
+            text="",
             justify="center",
         )
-        subtitle.pack(pady=(0, 8))
+        self.subtitle.pack(pady=(0, 8))
+        self.update_game_labels()
 
         channel_frame = tk.Frame(self)
         channel_frame.pack(fill="x", padx=24, pady=(0, 6))
@@ -210,17 +213,37 @@ class Launcher(tk.Tk):
                 button.configure(state="disabled")
             button.pack(side="right", padx=(6, 0))
 
+        game_frame = tk.Frame(self)
+        game_frame.pack(fill="x", padx=24, pady=(0, 4))
+
+        tk.Label(
+            game_frame,
+            text="Game:",
+            anchor="w",
+        ).pack(side="left")
+
+        for game, label in (("ats", "ATS"), ("ets2", "ETS2")):
+            tk.Radiobutton(
+                game_frame,
+                text=label,
+                value=game,
+                variable=self.selected_game,
+                command=self.change_game,
+                indicatoron=False,
+                padx=14,
+            ).pack(side="right", padx=(6, 0))
+
         button_frame = tk.Frame(self)
         button_frame.pack(fill="x", padx=18)
 
         buttons = [
             (
                 "Launch TruckNav",
-                lambda: self.run_script("launch-trucknav.sh", wait=False),
+                self.launch_trucknav_only,
             ),
             (
-                "Launch ATS + TruckNav together",
-                lambda: self.run_script("launch-ats-trucknav.sh", wait=False),
+                self.game_launch_label(),
+                self.launch_selected_game,
             ),
             (
                 "Stop TruckNav",
@@ -237,6 +260,8 @@ class Launcher(tk.Tk):
         for index, (label, command) in enumerate(buttons):
             button = tk.Button(button_frame, text=label, command=command, height=2)
             button.grid(row=index // 2, column=index % 2, sticky="ew", padx=6, pady=6)
+            if index == 1:
+                self.launch_game_button = button
         button_frame.columnconfigure(0, weight=1)
         button_frame.columnconfigure(1, weight=1)
 
@@ -276,6 +301,49 @@ class Launcher(tk.Tk):
             f"Active channel: {self.active_channel.title()} ({REPO_ROOT})\n"
         )
         self.append_output("Use Check dependencies/status first if this is a new Fedora setup.\n")
+
+    def game_label(self) -> str:
+        return "ETS2" if self.selected_game.get() == "ets2" else "ATS"
+
+    def game_app_id(self) -> str:
+        return ETS2_APP_ID if self.selected_game.get() == "ets2" else ATS_APP_ID
+
+    def game_launch_label(self) -> str:
+        return f"Launch {self.game_label()} + TruckNav together"
+
+    def update_game_labels(self) -> None:
+        if hasattr(self, "subtitle"):
+            self.subtitle.configure(
+                text=(
+                    f"Channel: {self.active_channel.title()}\n"
+                    f"Repo: {REPO_ROOT}\n"
+                    f"{self.game_label()} Steam app id: {self.game_app_id()}"
+                )
+            )
+        if hasattr(self, "launch_game_button"):
+            self.launch_game_button.configure(text=self.game_launch_label())
+
+    def change_game(self) -> None:
+        self.config_data["selected_game"] = self.selected_game.get()
+        save_config(self.config_data)
+        self.update_game_labels()
+        self.append_output(
+            f"Selected game: {self.game_label()} ({self.game_app_id()})\n"
+        )
+
+    def launch_trucknav_only(self) -> None:
+        self.run_script(
+            "launch-trucknav.sh",
+            wait=False,
+            args=[self.selected_game.get()],
+        )
+
+    def launch_selected_game(self) -> None:
+        self.run_script(
+            "launch-game-trucknav.sh",
+            wait=False,
+            args=[self.selected_game.get()],
+        )
 
     def channel_repo(self, channel: str) -> Path | None:
         channels = self.config_data.get("channels")
@@ -407,6 +475,8 @@ class Launcher(tk.Tk):
         env = os.environ.copy()
         env["TRUCKNAV_REPO_ROOT"] = str(REPO_ROOT)
         env["TRUCKNAV_ATS_APP_ID"] = ATS_APP_ID
+        env["TRUCKNAV_ETS2_APP_ID"] = ETS2_APP_ID
+        env["TRUCKNAV_GAME"] = self.selected_game.get()
         env["TRUCKNAV_URL"] = TRUCKNAV_URL
         return env
 
@@ -416,17 +486,23 @@ class Launcher(tk.Tk):
         self.output.see("end")
         self.output.configure(state="disabled")
 
-    def run_script(self, script_name: str, wait: bool) -> None:
+    def run_script(
+        self,
+        script_name: str,
+        wait: bool,
+        args: list[str] | None = None,
+    ) -> None:
         script = SCRIPT_DIR / script_name
         if not script.is_file():
             messagebox.showerror("Missing script", f"Could not find {script}")
             return
 
-        self.append_output(f"\n$ {script}\n")
+        command = [str(script), *(args or [])]
+        self.append_output("\n$ " + " ".join(command) + "\n")
         try:
             if wait:
                 result = subprocess.run(
-                    [str(script)],
+                    command,
                     cwd=REPO_ROOT,
                     env=self.env(),
                     text=True,
@@ -442,7 +518,7 @@ class Launcher(tk.Tk):
                     )
             else:
                 process = subprocess.Popen(
-                    [str(script)],
+                    command,
                     cwd=REPO_ROOT,
                     env=self.env(),
                     text=True,
