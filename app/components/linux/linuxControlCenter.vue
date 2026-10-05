@@ -142,6 +142,15 @@ async function refreshJob() {
 }
 
 async function startAction(action: "update-app" | "rebuild-map") {
+    if (
+        action === "rebuild-map" &&
+        !window.confirm(
+            "Rebuild the ATS map from your installed game files? This can take a while.",
+        )
+    ) {
+        return;
+    }
+
     actionLoading.value = action;
     try {
         await $fetch("/api/linux/action", {
