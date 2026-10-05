@@ -9,6 +9,7 @@ import {
 import {
   AtsDlc,
   AtsDlcGuards,
+  Ets2DlcGuards,
   ItemType,
 } from '@truckermudgeon/map/constants';
 import { getCommonItem } from '@truckermudgeon/map/get-common-item';
@@ -32,20 +33,28 @@ function toTruckNavCoords([gameX, gameY]: Position): [number, number] {
   return [lon, lat];
 }
 
-const [parserDirArg, graphDirArg, outDirArg] = process.argv.slice(2);
-if (!parserDirArg || !graphDirArg || !outDirArg) {
+const [mapArg, parserDirArg, graphDirArg, outDirArg] = process.argv.slice(2);
+if (
+  (mapArg !== 'usa' && mapArg !== 'europe') ||
+  !parserDirArg ||
+  !graphDirArg ||
+  !outDirArg
+) {
   console.error(
-    'usage: tsx trucknav-export.ts <parser-dir> <graph-dir> <output-dir>',
+    'usage: tsx trucknav-export.ts <usa|europe> <parser-dir> <graph-dir> <output-dir>',
   );
   process.exit(2);
 }
+
+const mapName = mapArg as 'usa' | 'europe';
+const gameName = mapName === 'usa' ? 'ats' : 'ets2';
 
 const parserDir = path.resolve(parserDirArg);
 const graphDir = path.resolve(graphDirArg);
 const outDir = path.resolve(outDirArg);
 fs.mkdirSync(outDir, { recursive: true });
 
-const truckNavDlcIds = new Map<number, number>([
+const atsTruckNavDlcIds = new Map<number, number>([
   [AtsDlc.NewMexico, 1],
   [AtsDlc.Oregon, 2],
   [AtsDlc.Washington, 3],
@@ -66,23 +75,57 @@ const truckNavDlcIds = new Map<number, number>([
   [AtsDlc.SouthDakota, 18],
 ]);
 
+// Ets2Dlc enum order in the pinned truckermudgeon/maps revision:
+// GoingEast=0, Scandinavia=1, ViveLaFrance=2, Italia=3,
+// BeyondTheBalticSea=4, RoadToTheBlackSea=5, Iberia=6,
+// WestBalkans=7, HeartOfRussia=8, Krone=9, Feldbinder=10,
+// Greece=11, NordicHorizons=12.
+//
+// TruckNav's ETS2 DLC UI uses map-expansion IDs 1..10. Heart of Russia is
+// unreleased and the Krone/Feldbinder guards are trailer-factory content, so
+// guarded edges for those three are intentionally excluded.
+const ets2TruckNavDlcIds = new Map<number, number>([
+  [0, 1],  // Going East
+  [1, 2],  // Scandinavia
+  [2, 3],  // Vive la France
+  [3, 4],  // Italia
+  [4, 5],  // Beyond the Baltic Sea
+  [5, 6],  // Road to the Black Sea
+  [6, 7],  // Iberia
+  [7, 8],  // West Balkans
+  [11, 9], // Greece
+  [12, 10], // Nordic Horizons
+]);
+
 function encodeDlcGuard(guard: number): {
   encoded: number;
   truckNavIds: number[];
 } | null {
-  const dlcs = AtsDlcGuards[guard as keyof typeof AtsDlcGuards];
+  const dlcs =
+    mapName === 'usa'
+      ? AtsDlcGuards[guard as keyof typeof AtsDlcGuards]
+      : Ets2DlcGuards[guard];
+
   if (!dlcs) {
     return null;
   }
 
+  if (dlcs.size === 0) {
+    return { encoded: 0, truckNavIds: [] };
+  }
+
+  const mapping =
+    mapName === 'usa' ? atsTruckNavDlcIds : ets2TruckNavDlcIds;
   const ids = [...dlcs]
-    .map(dlc => truckNavDlcIds.get(dlc))
+    .map(dlc => mapping.get(Number(dlc)))
     .filter((id): id is number => id != null)
     .sort((a, b) => a - b);
 
-  if (ids.length === 0) {
-    return { encoded: 0, truckNavIds: [] };
+  // Do not silently turn unsupported guarded content into base-map roads.
+  if (ids.length !== dlcs.size) {
+    return null;
   }
+
   if (ids.length === 1) {
     return { encoded: ids[0], truckNavIds: ids };
   }
@@ -129,7 +172,7 @@ function dedupeCoords(coords: [number, number][]): [number, number][] {
 }
 
 console.log('Reading parser and routing data...');
-const tsMapData = readMapData(parserDir, 'usa', {
+const tsMapData = readMapData(parserDir, mapName, {
   mapDataKeys: [
     'nodes',
     'roads',
@@ -140,8 +183,8 @@ const tsMapData = readMapData(parserDir, 'usa', {
     'prefabDescriptions',
   ],
 });
-const graphData = readGraphData(graphDir, 'usa');
-const roundaboutData = readRoundaboutsData(graphDir, 'usa');
+const graphData = readGraphData(graphDir, mapName);
+const roundaboutData = readRoundaboutsData(graphDir, mapName);
 
 const ferriesByUid = new Map<bigint, Ferry & { type: ItemType.Ferry }>(
   tsMapData.ferries
@@ -198,7 +241,7 @@ let edgeCount = 0;
 let geometryFloatPointer = 0;
 let geometryPointCount = 0;
 let fallbackGeometryCount = 0;
-let southDakotaEdgeCount = 0;
+let newestDlcEdgeCount = 0;
 let compositeDlcEdgeCount = 0;
 let roundaboutEdgeCount = 0;
 const maneuverCounts = new Map<number, number>();
@@ -270,7 +313,8 @@ try {
 
       const { encoded: requiredDlc, truckNavIds } = dlcEncoding;
       guardCounts.set(edge.dlcGuard, (guardCounts.get(edge.dlcGuard) ?? 0) + 1);
-      if (truckNavIds.includes(18)) southDakotaEdgeCount++;
+      const newestTruckNavDlcId = mapName === 'usa' ? 18 : 10;
+      if (truckNavIds.includes(newestTruckNavDlcId)) newestDlcEdgeCount++;
       if (truckNavIds.length > 1) compositeDlcEdgeCount++;
 
       const isRoundabout =
@@ -336,11 +380,16 @@ try {
   fs.closeSync(geometryFd);
 }
 
+const newestTruckNavDlcId = mapName === 'usa' ? 18 : 10;
+const newestDlcName = mapName === 'usa' ? 'South Dakota' : 'Nordic Horizons';
+
 const manifest = {
   schemaVersion: 2,
   source: {
-    game: 'ats',
-    parserVersionFile: 'usa-version.txt',
+    game: gameName,
+    map: mapName,
+    parserVersionFile:
+      mapName === 'usa' ? 'usa-version.txt' : 'europe-version.txt',
     projection: 'trucknav-flat-mercator-r300000',
   },
   graph: {
@@ -353,8 +402,15 @@ const manifest = {
   dlcEncoding: {
     legacySingleId: true,
     compositeMaskFlag: DLC_MASK_FLAG,
-    southDakotaTruckNavId: 18,
-    southDakotaEdges: southDakotaEdgeCount,
+    newestTruckNavDlcId,
+    newestDlcName,
+    newestDlcEdges: newestDlcEdgeCount,
+    ...(mapName === 'usa'
+      ? {
+          southDakotaTruckNavId: 18,
+          southDakotaEdges: newestDlcEdgeCount,
+        }
+      : {}),
     compositeEdges: compositeDlcEdgeCount,
   },
   navigation: {
@@ -378,7 +434,7 @@ fs.writeFileSync(
 
 if (skippedUnknownGuardCounts.size > 0) {
   console.warn(
-    'Skipped edges with unknown/unreleased ATS DLC guards:',
+    `Skipped edges with unsupported/unknown ${gameName.toUpperCase()} DLC guards:`,
     Object.fromEntries(
       [...skippedUnknownGuardCounts.entries()].sort((a, b) => a[0] - b[0]),
     ),
