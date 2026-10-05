@@ -466,6 +466,30 @@ self.onmessage = async (e: MessageEvent) => {
                 avgSpeed,
             );
 
+            const waypointStats = snappedNodeIds.map((nodeId) => {
+                const waypointPos = nodeCoordsMapInstance!.get(nodeId);
+                if (!waypointPos) return { km: 0, hours: 0 };
+
+                let minDistSq = Infinity;
+                let bestIdx = 0;
+                for (let j = 0; j < finalSmoothedPath.length; j++) {
+                    const p = finalSmoothedPath[j]!;
+                    const dSq =
+                        Math.pow(p[0] - waypointPos[0], 2) +
+                        Math.pow(p[1] - waypointPos[1], 2);
+
+                    if (dSq < minDistSq) {
+                        minDistSq = dSq;
+                        bestIdx = j;
+                    }
+                }
+
+                return {
+                    km: finalStatsCache[bestIdx * 2] || 0,
+                    hours: finalStatsCache[bestIdx * 2 + 1] || 0,
+                };
+            });
+
             const nodeKms = new Float32Array(combinedNodeSequence.length);
             for (let i = 0; i < combinedNodeSequence.length; i++) {
                 const originalNodePos = nodeCoordsMapInstance.get(
@@ -517,6 +541,7 @@ self.onmessage = async (e: MessageEvent) => {
                         sequenceManeuvers,
                         sequenceExits,
                         snappedNodeIds,
+                        waypointStats,
                         endId: combinedNodeSequence[
                             combinedNodeSequence.length - 1
                         ],
