@@ -497,7 +497,7 @@ class Launcher(tk.Tk):
             messagebox.showerror("Missing script", f"Could not find {script}")
             return
 
-        command = [str(script), *(args or [])]
+        command = ["bash", str(script), *(args or [])]
         self.append_output("\n$ " + " ".join(command) + "\n")
         try:
             if wait:
