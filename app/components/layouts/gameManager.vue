@@ -210,8 +210,14 @@ function toggleModPanel() {
                     <InfoBox v-else type="note">
                         <template #content>
                             <p>
-                                TruckNav Linux can use locally generated ATS map
-                                data without the Windows PC Companion.
+                                <template v-if="selectedGame === 'ats'">
+                                    TruckNav Linux can use locally generated ATS
+                                    map data without the Windows PC Companion.
+                                </template>
+                                <template v-else>
+                                    TruckNav Linux can use the bundled ETS2 map
+                                    data without the Windows PC Companion.
+                                </template>
                             </p>
                         </template>
                     </InfoBox>
@@ -246,8 +252,16 @@ function toggleModPanel() {
                     </template>
 
                     <p v-else class="linux-map-hint">
-                        Use <strong>Rebuild ATS Map</strong> above to generate
-                        the map directly from your installed ATS files.
+                        <template v-if="selectedGame === 'ats'">
+                            Use <strong>Rebuild ATS Map</strong> above to
+                            generate the map directly from your installed ATS
+                            files.
+                        </template>
+                        <template v-else>
+                            Launch ETS2 once from the TruckNav Linux Launcher to
+                            stage the bundled ETS2 map into this Testing
+                            checkout.
+                        </template>
                     </p>
                 </div>
             </template>
