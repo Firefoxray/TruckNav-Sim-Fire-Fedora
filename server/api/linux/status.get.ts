@@ -49,7 +49,11 @@ export default defineEventHandler((event) => {
         upstream = branch !== "detached" ? "origin/" + branch : null;
     }
 
-    if (query.refresh === "1" && upstream) {
+    if (
+        query.refresh === "1" &&
+        upstream &&
+        canManageTruckNavHost(event)
+    ) {
         const slash = upstream.indexOf("/");
         const remote = slash > 0 ? upstream.slice(0, slash) : "origin";
         const remoteBranch =
