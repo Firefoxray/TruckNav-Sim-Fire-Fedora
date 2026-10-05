@@ -41,6 +41,12 @@ export interface AppSettingsState {
     locale: LocaleCode;
 }
 
+interface SharedSettingsResponse {
+    revision: number;
+    updatedAt?: string;
+    settings: Partial<AppSettingsState> | null;
+}
+
 const DEFAULT_PROFILE: GameProfile = {
     themeColor: "#fbc02d",
     textColor: "light",
@@ -88,11 +94,69 @@ const DEFAULT_SETTINGS: AppSettingsState = {
 };
 
 const STORAGE_KEY = "truck-nav-settings";
+const SHARED_SETTINGS_URL = "/api/linux/settings";
+const SHARED_POLL_MS = 1500;
+
+let sharedRevision = 0;
+let sharedSaveTimer: ReturnType<typeof setTimeout> | null = null;
+let sharedPollTimer: ReturnType<typeof setInterval> | null = null;
+let applyingSharedSettings = false;
+
+function cloneDefaults(): AppSettingsState {
+    return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
+}
+
+function mergeSettings(
+    raw: Partial<AppSettingsState> | null | undefined,
+    current?: AppSettingsState,
+): AppSettingsState {
+    const defaults = cloneDefaults();
+    const source = raw || {};
+
+    const merged: AppSettingsState = {
+        ...defaults,
+        ...source,
+        profiles: {
+            ets2: {
+                ...defaults.profiles.ets2,
+                ...(source.profiles?.ets2 || {}),
+            },
+            ats: {
+                ...defaults.profiles.ats,
+                ...(source.profiles?.ats || {}),
+            },
+        },
+    };
+
+    // Route destinations are session/navigation state, not a shared preference.
+    // Keep each browser's active destination independent.
+    if (current) {
+        merged.profiles.ets2.lastDestination =
+            current.profiles.ets2.lastDestination;
+        merged.profiles.ats.lastDestination =
+            current.profiles.ats.lastDestination;
+    }
+
+    return merged;
+}
+
+function toSharedSettings(settings: AppSettingsState): AppSettingsState {
+    const shared = JSON.parse(JSON.stringify(settings)) as AppSettingsState;
+    shared.profiles.ets2.lastDestination = null;
+    shared.profiles.ats.lastDestination = null;
+    return shared;
+}
+
+function canUseSharedWebSettings(): boolean {
+    if (typeof window === "undefined") return false;
+    if ((window as any).electronAPI) return false;
+    return window.location.protocol === "http:" || window.location.protocol === "https:";
+}
 
 export const useSettings = () => {
-    const settings = useState<AppSettingsState>("app-settings", () => ({
-        ...DEFAULT_SETTINGS,
-    }));
+    const settings = useState<AppSettingsState>("app-settings", () =>
+        cloneDefaults(),
+    );
 
     const activeSettings = computed(() => {
         const game = settings.value.selectedGame || "ets2";
@@ -100,6 +164,8 @@ export const useSettings = () => {
     });
 
     const applySideEffects = () => {
+        if (typeof document === "undefined") return;
+
         document.documentElement.style.setProperty(
             "--theme-color",
             activeSettings.value.themeColor,
@@ -135,9 +201,98 @@ export const useSettings = () => {
         );
     };
 
-    const saveSettings = () => {
+    const saveLocalSettings = () => {
+        if (typeof localStorage === "undefined") return;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value));
+    };
+
+    const persistSharedSettings = async () => {
+        if (!canUseSharedWebSettings() || applyingSharedSettings) return;
+
+        try {
+            const response = await fetch(SHARED_SETTINGS_URL, {
+                method: "PUT",
+                headers: {
+                    "content-type": "application/json",
+                },
+                body: JSON.stringify({
+                    settings: toSharedSettings(settings.value),
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(
+                    `shared settings save failed: ${response.status}`,
+                );
+            }
+
+            const result = await response.json();
+            if (typeof result?.revision === "number") {
+                sharedRevision = Math.max(
+                    sharedRevision,
+                    result.revision,
+                );
+            }
+        } catch (error) {
+            console.warn("Could not save shared TruckNav settings:", error);
+        }
+    };
+
+    const queueSharedSave = () => {
+        if (!canUseSharedWebSettings() || applyingSharedSettings) return;
+
+        if (sharedSaveTimer) clearTimeout(sharedSaveTimer);
+        sharedSaveTimer = setTimeout(() => {
+            sharedSaveTimer = null;
+            void persistSharedSettings();
+        }, 180);
+    };
+
+    const saveSettings = () => {
+        saveLocalSettings();
         applySideEffects();
+        queueSharedSave();
+    };
+
+    const applySharedPayload = (payload: SharedSettingsResponse) => {
+        if (!payload.settings || payload.revision <= sharedRevision) return;
+
+        applyingSharedSettings = true;
+        try {
+            settings.value = mergeSettings(
+                payload.settings,
+                settings.value,
+            );
+            sharedRevision = payload.revision;
+            saveLocalSettings();
+            applySideEffects();
+        } finally {
+            applyingSharedSettings = false;
+        }
+    };
+
+    const fetchSharedSettings = async (): Promise<SharedSettingsResponse | null> => {
+        if (!canUseSharedWebSettings()) return null;
+
+        try {
+            const response = await fetch(SHARED_SETTINGS_URL, {
+                cache: "no-store",
+            });
+            if (!response.ok) return null;
+            return (await response.json()) as SharedSettingsResponse;
+        } catch (error) {
+            console.warn("Could not load shared TruckNav settings:", error);
+            return null;
+        }
+    };
+
+    const startSharedSettingsSync = () => {
+        if (!canUseSharedWebSettings() || sharedPollTimer) return;
+
+        sharedPollTimer = setInterval(async () => {
+            const payload = await fetchSharedSettings();
+            if (payload) applySharedPayload(payload);
+        }, SHARED_POLL_MS);
     };
 
     const updateGlobal = <K extends keyof Omit<AppSettingsState, "profiles">>(
@@ -157,39 +312,49 @@ export const useSettings = () => {
         saveSettings();
     };
 
-    const initSettings = () => {
-        const savedString = localStorage.getItem(STORAGE_KEY);
+    const initSettings = async () => {
+        let localSettings: Partial<AppSettingsState> | null = null;
 
-        if (savedString) {
-            try {
-                const parsed = JSON.parse(savedString);
-                settings.value = { ...DEFAULT_SETTINGS, ...parsed };
+        if (typeof localStorage !== "undefined") {
+            const savedString = localStorage.getItem(STORAGE_KEY);
 
-                settings.value.profiles = {
-                    ets2: {
-                        ...DEFAULT_SETTINGS.profiles.ets2,
-                        ...(parsed.profiles?.ets2 || {}),
-                        fontFamily:
-                            parsed.profiles?.ets2?.fontFamily ||
-                            DEFAULT_SETTINGS.profiles.ets2.fontFamily,
-                    },
-                    ats: {
-                        ...DEFAULT_SETTINGS.profiles.ats,
-                        ...(parsed.profiles?.ats || {}),
-                        fontFamily:
-                            parsed.profiles?.ats?.fontFamily ||
-                            DEFAULT_SETTINGS.profiles.ats.fontFamily,
-                    },
-                };
-            } catch (e) {
-                console.error("Corrupt settings found, resetting to defaults.");
-                settings.value = { ...DEFAULT_SETTINGS };
+            if (savedString) {
+                try {
+                    localSettings = JSON.parse(savedString);
+                } catch (error) {
+                    console.error(
+                        "Corrupt local settings found, resetting to defaults.",
+                        error,
+                    );
+                }
             }
-        } else {
-            settings.value = { ...DEFAULT_SETTINGS };
         }
 
+        settings.value = mergeSettings(localSettings);
         applySideEffects();
+
+        if (canUseSharedWebSettings()) {
+            const shared = await fetchSharedSettings();
+
+            if (shared?.settings) {
+                sharedRevision = shared.revision || 0;
+                applyingSharedSettings = true;
+                try {
+                    settings.value = mergeSettings(
+                        shared.settings,
+                        settings.value,
+                    );
+                    saveLocalSettings();
+                    applySideEffects();
+                } finally {
+                    applyingSharedSettings = false;
+                }
+            } else {
+                await persistSharedSettings();
+            }
+
+            startSharedSettingsSync();
+        }
     };
 
     const resetGlobalSetting = <
@@ -197,13 +362,13 @@ export const useSettings = () => {
     >(
         key: K,
     ) => {
-        settings.value[key] = DEFAULT_SETTINGS[key];
+        settings.value[key] = cloneDefaults()[key];
         saveSettings();
     };
 
     const resetProfileSetting = <K extends keyof GameProfile>(key: K) => {
         const game = settings.value.selectedGame || "ets2";
-        const defaultValue = DEFAULT_SETTINGS.profiles[game][key];
+        const defaultValue = cloneDefaults().profiles[game][key];
 
         settings.value.profiles[game][key] = defaultValue;
         saveSettings();
@@ -214,9 +379,7 @@ export const useSettings = () => {
 
         const currentDest = settings.value.profiles[game].lastDestination;
 
-        const freshProfile = JSON.parse(
-            JSON.stringify(DEFAULT_SETTINGS.profiles[game]),
-        );
+        const freshProfile = cloneDefaults().profiles[game];
         freshProfile.lastDestination = currentDest;
 
         settings.value.hudBtnSize = DEFAULT_SETTINGS.hudBtnSize;
