@@ -4,26 +4,45 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-if len(sys.argv) != 5:
+if len(sys.argv) != 6:
     raise SystemExit(
         "usage: write-trucknav-linux-map-manifest.py "
-        "<usa-version.txt> <graph-manifest.json> <visual-manifest.json> <output.json>"
+        "<ats|ets2> <version.txt> <graph-manifest.json> "
+        "<visual-manifest.json> <output.json>"
     )
 
-version_path = Path(sys.argv[1])
-graph_path = Path(sys.argv[2])
-visual_path = Path(sys.argv[3])
-output_path = Path(sys.argv[4])
+game = sys.argv[1]
+if game not in {"ats", "ets2"}:
+    raise SystemExit("game must be 'ats' or 'ets2'")
+
+version_path = Path(sys.argv[2])
+graph_path = Path(sys.argv[3])
+visual_path = Path(sys.argv[4])
+output_path = Path(sys.argv[5])
 
 version = version_path.read_text(encoding="utf-8").strip()
 graph = json.loads(graph_path.read_text(encoding="utf-8"))
 visual = json.loads(visual_path.read_text(encoding="utf-8"))
 
+APP_IDS = {
+    "ats": "270880",
+    "ets2": "227300",
+}
+SUPPORTED_DLCS = {
+    "ats": 18,
+    "ets2": 10,
+}
+NEWEST_DLC = {
+    "ats": "South Dakota",
+    "ets2": "Nordic Horizons",
+}
+
 def find_steam_manifest():
     home = Path.home()
+    app_id = APP_IDS[game]
     candidates = [
-        home / ".local/share/Steam/steamapps/appmanifest_270880.acf",
-        home / ".steam/steam/steamapps/appmanifest_270880.acf",
+        home / ".local/share/Steam/steamapps" / f"appmanifest_{app_id}.acf",
+        home / ".steam/steam/steamapps" / f"appmanifest_{app_id}.acf",
     ]
     for candidate in candidates:
         if candidate.is_file():
@@ -49,17 +68,17 @@ if steam_manifest:
     steam_last_updated = parse_acf_value(steam_text, "LastUpdated")
 
 manifest = {
-    "schemaVersion": 1,
-    "game": "ats",
+    "schemaVersion": 2,
+    "game": game,
     "gameVersion": version,
     "generatedAt": datetime.now(timezone.utc).isoformat(),
     "steamBuildId": steam_build_id,
     "steamLastUpdated": steam_last_updated,
     "projection": graph.get("source", {}).get("projection")
     or visual.get("projection"),
-    "supportedDlcs": 18,
-    "newestDlc": "South Dakota",
-    "southDakotaEdges": graph.get("dlcEncoding", {}).get("southDakotaEdges"),
+    "supportedDlcs": SUPPORTED_DLCS[game],
+    "newestDlc": NEWEST_DLC[game],
+    "newestDlcEdges": graph.get("dlcEncoding", {}).get("newestDlcEdges"),
     "graphEdges": graph.get("graph", {}).get("edges"),
     "graphNodes": graph.get("graph", {}).get("nodes"),
     "visualFeatures": visual.get("features"),
@@ -67,11 +86,16 @@ manifest = {
     "skippedUnknownDlcGuards": graph.get("skippedUnknownDlcGuards", {}),
 }
 
+if game == "ats":
+    manifest["southDakotaEdges"] = graph.get("dlcEncoding", {}).get(
+        "southDakotaEdges"
+    )
+
 output_path.parent.mkdir(parents=True, exist_ok=True)
 output_path.write_text(
     json.dumps(manifest, indent=2) + "\n",
     encoding="utf-8",
 )
 
-print(f"TruckNav Linux map manifest: {output_path}")
+print(f"TruckNav Linux {game.upper()} map manifest: {output_path}")
 print(json.dumps(manifest, indent=2))
