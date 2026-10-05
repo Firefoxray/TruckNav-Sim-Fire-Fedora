@@ -62,6 +62,8 @@ const { loading, progress, adjacency, nodeCoords, initializeGraphData } =
 const {
     isCameraLocked,
     isAutoFollowEnabled,
+    isHeadingUp,
+    mapBearing,
     isNavigating,
     initCameraListeners,
     followTruck,
@@ -71,6 +73,8 @@ const {
     updateMarkerSize,
     updateMarkerImage,
     toggleAutoFollow,
+    toggleHeadingUp,
+    setNorthUp,
 } = useMapCamera(map);
 
 const {
@@ -438,11 +442,7 @@ function toggleEnableClicking() {
 }
 
 const onResetNorth = () => {
-    map.value?.easeTo({
-        bearing: 0,
-        pitch: 0,
-        duration: 500,
-    });
+    setNorthUp();
 };
 
 const onToggleFullscreen = async () => {
@@ -559,8 +559,36 @@ const onCancelRoute = () => {
                             <Icon name="lucide:fullscreen" class="icon" />
                         </HudButton>
 
-                        <HudButton :onClick="onResetNorth">
-                            <Icon name="lucide:compass" class="icon" />
+                        <HudButton
+                            :onClick="onResetNorth"
+                            aria-label="Reset map north"
+                            title="Reset map north"
+                        >
+                            <Icon
+                                name="lucide:compass"
+                                class="icon compass-icon"
+                                :style="{
+                                    transform:
+                                        'rotate(' + -mapBearing + 'deg)',
+                                }"
+                            />
+                        </HudButton>
+
+                        <HudButton
+                            :is-active="isHeadingUp"
+                            :class="{ 'green-icon': isHeadingUp }"
+                            :onClick="toggleHeadingUp"
+                            aria-label="Toggle heading-up map"
+                            :title="
+                                isHeadingUp
+                                    ? 'Heading up — click for north up'
+                                    : 'North/manual up — click for heading up'
+                            "
+                        >
+                            <Icon
+                                name="lucide:navigation"
+                                class="icon heading-icon"
+                            />
                         </HudButton>
 
                         <HudButton
