@@ -302,6 +302,17 @@ export default defineEventHandler((event) => {
             installedSteamBuildId,
             installedSteamLastUpdated,
         },
+        ets2: {
+            bundledMapAvailable: existsSync(
+                join(
+                    repoRoot,
+                    "public",
+                    "data",
+                    "ets2",
+                    "TRUCKNAV_BUNDLED_MAP.txt",
+                ),
+            ),
+        },
         map: {
             ...map,
             mapUpdateAvailable,
