@@ -86,9 +86,9 @@ export const useMapCamera = (map: Ref<Map | null>) => {
             if (isCameraLocked.value && !isEasing && !isTargetAtOrigin) {
                 map.value.jumpTo({
                     center: [currentTruckCoords[0], currentTruckCoords[1]],
-                    bearing: isAutoFollowEnabled.value
-                        ? currentTruckHeading
-                        : 0,
+                    // Preserve whatever bearing the user chose. The map starts
+                    // north-up, and manual rotation remains in effect while
+                    // the camera continues following the truck.
                     padding: isNavigating.value ? PADDING_NAV : PADDING_FREE,
                 });
             }
@@ -167,7 +167,7 @@ export const useMapCamera = (map: Ref<Map | null>) => {
 
         map.value.easeTo({
             center: currentTruckCoords,
-            bearing: currentTruckHeading,
+            // Do not overwrite the user's current map rotation.
             pitch: map.value.getPitch(),
             duration: 350,
             padding: isNavigating.value ? PADDING_NAV : PADDING_FREE,
@@ -230,7 +230,8 @@ export const useMapCamera = (map: Ref<Map | null>) => {
 
         map.value.easeTo({
             center: coords,
-            bearing: isNavigating.value ? heading : 0,
+            // Navigation follows position only. Bearing stays north-up unless
+            // the user manually rotates the map.
             zoom: 11,
             pitch: map.value.getPitch(),
             duration: 350,
