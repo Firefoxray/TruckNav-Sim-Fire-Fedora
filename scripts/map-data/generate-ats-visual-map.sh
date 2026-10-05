@@ -47,6 +47,7 @@ cp "$REPROJECT_SRC" "$REPROJECT_DST"
     cd "$TRUCKNAV_MAPS_DIR"
     ./node_modules/.bin/tsx \
         "$REPROJECT_DST" \
+        usa \
         "$FILTERED_WGS84" \
         "$FILTERED_GEOJSON"
 )
