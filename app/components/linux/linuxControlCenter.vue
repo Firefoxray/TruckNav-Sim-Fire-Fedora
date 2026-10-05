@@ -42,6 +42,7 @@ interface LinuxStatus {
 
 interface LinuxJob {
     action: "update-app" | "rebuild-map";
+    game?: "ats" | "ets2" | null;
     running: boolean;
     exitCode: number | null;
     startedAt?: string;
@@ -171,7 +172,9 @@ async function startAction(action: "update-app" | "rebuild-map") {
     if (
         action === "rebuild-map" &&
         !window.confirm(
-            "Rebuild the ATS map from your installed game files? This can take a while.",
+            "Rebuild the " +
+                selectedGame.value.toUpperCase() +
+                " map from your installed game files? This can take a while.",
         )
     ) {
         return;
@@ -181,7 +184,10 @@ async function startAction(action: "update-app" | "rebuild-map") {
     try {
         await $fetch("/api/linux/action", {
             method: "POST",
-            body: { action },
+            body: {
+                action,
+                game: selectedGame.value,
+            },
         });
         await refreshJob();
         if (!pollTimer) {
@@ -375,8 +381,7 @@ onUnmounted(() => {
                 class="linux-action"
                 :disabled="
                     !!actionLoading ||
-                    !maintenanceAllowed ||
-                    selectedGame === 'ets2'
+                    !maintenanceAllowed
                 "
                 @click="startAction('rebuild-map')"
             >
@@ -390,7 +395,7 @@ onUnmounted(() => {
                 />
                 {{
                     selectedGame === "ets2"
-                        ? "ETS2 Map Rebuild Pending"
+                        ? "Rebuild ETS2 Map"
                         : status?.map.mapUpdateAvailable
                           ? "Update ATS Map"
                           : "Rebuild ATS Map"
@@ -414,7 +419,8 @@ onUnmounted(() => {
                     {{
                         job.action === "update-app"
                             ? "TruckNav update"
-                            : "ATS map rebuild"
+                            : (job.game || selectedGame).toUpperCase() +
+                              " map rebuild"
                     }}
                     {{
                         job.running
@@ -429,7 +435,7 @@ onUnmounted(() => {
             <pre v-if="job.logTail.length">{{ job.logTail.join("\n") }}</pre>
 
             <p v-if="!job.running && job.exitCode === 0" class="restart-note">
-                Reload TruckNav after this finishes. ATS can stay open.
+                Reload TruckNav after this finishes. The game can stay open.
             </p>
         </div>
     </section>
