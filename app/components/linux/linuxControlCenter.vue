@@ -22,6 +22,9 @@ interface LinuxStatus {
         installedSteamBuildId?: string | null;
         installedSteamLastUpdated?: string | null;
     };
+    ets2?: {
+        bundledMapAvailable?: boolean;
+    };
     map: {
         available: boolean;
         game?: string;
@@ -44,6 +47,9 @@ interface LinuxJob {
     startedAt?: string;
     logTail: string[];
 }
+
+const { settings } = useSettings();
+const selectedGame = computed(() => settings.value.selectedGame || "ats");
 
 const status = ref<LinuxStatus | null>(null);
 const loading = ref(false);
@@ -85,6 +91,12 @@ const appStateClass = computed(() => {
 });
 
 const mapVersionText = computed(() => {
+    if (selectedGame.value === "ets2") {
+        return status.value?.ets2?.bundledMapAvailable
+            ? "ETS2 bundled map"
+            : "ETS2 map not staged";
+    }
+
     if (!status.value?.map.available) return "Not built";
     return status.value.map.gameVersion
         ? "ATS " + status.value.map.gameVersion
@@ -92,6 +104,12 @@ const mapVersionText = computed(() => {
 });
 
 const mapStateText = computed(() => {
+    if (selectedGame.value === "ets2") {
+        return status.value?.ets2?.bundledMapAvailable
+            ? "Bundled"
+            : "Missing";
+    }
+
     if (!status.value?.map.available) return "Missing";
     if (status.value.map.mapUpdateAvailable) return "Update available";
     if (!status.value.map.steamBuildId) return "Tracking not initialized";
@@ -99,6 +117,12 @@ const mapStateText = computed(() => {
 });
 
 const mapStateClass = computed(() => {
+    if (selectedGame.value === "ets2") {
+        return status.value?.ets2?.bundledMapAvailable
+            ? "ok"
+            : "warning";
+    }
+
     if (!status.value?.map.available) return "warning";
     if (status.value.map.mapUpdateAvailable) return "update";
     if (!status.value.map.steamBuildId) return "warning";
@@ -277,7 +301,11 @@ onUnmounted(() => {
 
                 <strong>{{ mapVersionText }}</strong>
                 <span class="status-detail">
-                    <template v-if="status?.map.available">
+                    <template v-if="selectedGame === 'ets2'">
+                        Existing TruckNav ETS2 bundle · fresh Linux rebuild
+                        pipeline pending
+                    </template>
+                    <template v-else-if="status?.map.available">
                         {{
                             status.map.newestDlc ||
                             "Current locally generated map"
@@ -291,7 +319,10 @@ onUnmounted(() => {
                     </template>
                 </span>
                 <span
-                    v-if="status?.ats?.installedSteamBuildId"
+                    v-if="
+                        selectedGame === 'ats' &&
+                        status?.ats?.installedSteamBuildId
+                    "
                     class="status-detail"
                 >
                     ATS build {{ status.ats.installedSteamBuildId }}
@@ -342,7 +373,11 @@ onUnmounted(() => {
 
             <button
                 class="linux-action"
-                :disabled="!!actionLoading || !maintenanceAllowed"
+                :disabled="
+                    !!actionLoading ||
+                    !maintenanceAllowed ||
+                    selectedGame === 'ets2'
+                "
                 @click="startAction('rebuild-map')"
             >
                 <Icon
@@ -354,9 +389,11 @@ onUnmounted(() => {
                     size="18"
                 />
                 {{
-                    status?.map.mapUpdateAvailable
-                        ? "Update ATS Map"
-                        : "Rebuild ATS Map"
+                    selectedGame === "ets2"
+                        ? "ETS2 Map Rebuild Pending"
+                        : status?.map.mapUpdateAvailable
+                          ? "Update ATS Map"
+                          : "Rebuild ATS Map"
                 }}
             </button>
         </div>
