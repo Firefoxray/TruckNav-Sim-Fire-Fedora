@@ -21,6 +21,7 @@ python3 scripts/map-data/generate-ats-aux-data.py \
 echo
 echo "=== Writing TruckNav Linux map manifest ==="
 python3 scripts/map-data/write-trucknav-linux-map-manifest.py \
+  ats \
   build/map-data/ats-parser/usa-version.txt \
   build/map-data/ats-trucknav/roadnetwork/trucknav-graph-manifest.json \
   build/map-data/ats-trucknav/map-data/trucknav-visual-manifest.json \
