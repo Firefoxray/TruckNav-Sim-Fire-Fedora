@@ -440,7 +440,7 @@ class Launcher(tk.Tk):
                 activeforeground=theme["button_active_fg"],
                 highlightbackground=theme["panel_bg"],
             )
-        elif isinstance(widget, tk.Checkbutton):
+        elif isinstance(widget, (tk.Checkbutton, tk.Radiobutton)):
             widget.configure(
                 bg=theme["panel_bg"],
                 fg=theme["text_fg"],
