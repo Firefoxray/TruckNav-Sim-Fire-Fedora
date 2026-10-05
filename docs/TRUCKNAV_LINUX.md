@@ -108,3 +108,17 @@ older stable revision.
 When a tested feature branch is merged into master, activate **Stable** and the
 normal application-menu shortcuts immediately start using the master checkout.
 The old Testing worktree can then be removed after it is no longer needed.
+
+
+## Launcher development workflow
+
+The Tk launcher includes two actions that do not require a running truck game:
+
+- **Update TruckNav** fetches/fast-forwards the active Stable or Testing
+  checkout, validates it with a Nuxt production build, and refreshes the
+  installed launcher/desktop files.
+- **Launch UI only (no game)** starts only the Nuxt web application. It does
+  not launch ATS/ETS2 and does not start the telemetry helper.
+
+Use UI-only mode for interface/settings/update testing. Use
+**Launch ATS + TruckNav together** only when live game telemetry is needed.
