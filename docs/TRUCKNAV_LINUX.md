@@ -126,3 +126,14 @@ application is independent of either truck game.
 
 A separate `launch-web-only.sh` helper remains available for development from
 the terminal, but it is intentionally not exposed as a large launcher button.
+
+
+## Versioning
+
+TruckNav Linux tracks its fork version in the repository-root `VERSION` file.
+The current development line starts at `1.1.0`. User-facing badges omit a
+trailing patch zero, so `1.1.0` renders as **1.1 Testing** on a development
+branch and **1.1 Stable** on `master`.
+
+Patch/minor/major version changes are made by updating `VERSION`; the launcher
+and web control center read the file directly.
