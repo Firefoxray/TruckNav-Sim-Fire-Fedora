@@ -3,7 +3,7 @@ import { KeepAwake } from "@capacitor-community/keep-awake";
 
 onMounted(async () => {
     const { initSettings } = useSettings();
-    initSettings();
+    await initSettings();
 
     const { initDesktopSettings } = useDesktopSettings();
     await initDesktopSettings();
