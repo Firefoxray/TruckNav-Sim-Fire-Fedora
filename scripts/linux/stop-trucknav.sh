@@ -25,6 +25,8 @@ stop_pid_file "TruckNav telemetry helper" "$TELEMETRY_PID_FILE"
 stop_pid_file "TruckNav web app" "$WEB_PID_FILE"
 
 pkill -f "protontricks-launch --appid ${TRUCKNAV_ATS_APP_ID} .*TruckNavTelemetry.exe" 2>/dev/null || true
+pkill -f "protontricks-launch --appid ${TRUCKNAV_ETS2_APP_ID} .*TruckNavTelemetry.exe" 2>/dev/null || true
 pkill -f "TruckNavTelemetry.exe" 2>/dev/null || true
+rm -f "$TELEMETRY_GAME_FILE"
 
 echo "TruckNav stop request complete."
