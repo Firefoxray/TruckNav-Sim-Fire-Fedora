@@ -31,3 +31,26 @@
         margin: 0;
     }
 }
+
+
+.right {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+
+.next-stop-line,
+.total-line {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    white-space: nowrap;
+}
+
+.trip-label {
+    font-size: 0.72em;
+    font-weight: 700;
+    opacity: 0.55;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
