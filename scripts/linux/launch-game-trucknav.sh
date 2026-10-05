@@ -3,6 +3,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 game="${1:-$TRUCKNAV_GAME}"
+launch_started=$SECONDS
 
 case "$game" in
   ats)
@@ -237,6 +238,7 @@ fi
 # overlap instead of adding fixed delays.
 echo "Starting telemetry"
 start_telemetry
+echo "TruckNav telemetry ready in $((SECONDS - launch_started))s."
 
 echo "Monitoring $game_label"
 monitor_game
