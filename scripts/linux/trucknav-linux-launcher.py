@@ -172,12 +172,14 @@ class Launcher(tk.Tk):
         button_frame.pack(fill="x", padx=18)
 
         buttons = [
-            ("Install/repair Fedora setup", self.install_fedora),
-            ("Launch TruckNav only", lambda: self.run_script("launch-trucknav.sh", wait=False)),
+            ("Update TruckNav", lambda: self.run_script("update-trucknav-linux.sh", wait=False)),
+            ("Launch UI only (no game)", lambda: self.run_script("launch-web-only.sh", wait=False)),
+            ("Launch TruckNav + telemetry", lambda: self.run_script("launch-trucknav.sh", wait=False)),
             ("Launch ATS + TruckNav together", lambda: self.run_script("launch-ats-trucknav.sh", wait=False)),
             ("Stop TruckNav", lambda: self.run_script("stop-trucknav.sh", wait=True)),
             ("Open TruckNav in browser", self.open_browser),
             ("Check dependencies/status", lambda: self.run_script("check-status.sh", wait=True)),
+            ("Install/repair Fedora setup", self.install_fedora),
         ]
 
         for index, (label, command) in enumerate(buttons):
