@@ -34,6 +34,9 @@ export const useRouteController = (
     const destinationName = ref<string>("");
     const routeDistance = ref<number>(0);
     const routeEta = ref<string>("");
+    const nextStopDistance = ref<number | null>(null);
+    const nextStopEta = ref<string>("");
+    const waypointStats = shallowRef<{ km: number; hours: number }[]>([]);
 
     const isRouteActive = ref(false);
     const isYardStart = ref(false);
@@ -55,6 +58,54 @@ export const useRouteController = (
 
     const waypointList = ref<[number, number][]>([]);
     const snappedWaypointNodeIds = ref<number[]>([]);
+
+    function formatEta(hours: number): string {
+        if (hours <= 0) return "Arriving...";
+        const h = Math.floor(hours);
+        const m = Math.round((hours - h) * 60);
+        return h > 0 ? `${h}h ${m}min` : `${m}min`;
+    }
+
+    function updateNextIntermediateStop(
+        currentKm: number,
+        currentHours: number,
+    ) {
+        const stats = waypointStats.value;
+        const finalWaypointIndex = waypointList.value.length - 1;
+
+        if (stats.length === 0 || finalWaypointIndex <= 0) {
+            nextStopDistance.value = null;
+            nextStopEta.value = "";
+            return;
+        }
+
+        let nextIntermediateIndex = -1;
+        for (
+            let i = 0;
+            i < Math.min(stats.length, finalWaypointIndex);
+            i++
+        ) {
+            if ((stats[i]?.km ?? 0) > currentKm + 0.02) {
+                nextIntermediateIndex = i;
+                break;
+            }
+        }
+
+        if (nextIntermediateIndex === -1) {
+            nextStopDistance.value = null;
+            nextStopEta.value = "";
+            return;
+        }
+
+        const next = stats[nextIntermediateIndex]!;
+        nextStopDistance.value = Math.max(
+            0,
+            Math.round(next.km - currentKm),
+        );
+        nextStopEta.value = formatEta(
+            Math.max(0, next.hours - currentHours),
+        );
+    }
 
     watch(
         () => activeSettings.value.themeColor,
@@ -221,6 +272,7 @@ export const useRouteController = (
                 endNodeId.value = result.endId;
 
                 snappedWaypointNodeIds.value = result.snappedNodeIds || [];
+                waypointStats.value = result.waypointStats || [];
 
                 const frozenRawPath = Object.freeze(result.displayPath);
                 currentRoutePath.value = frozenRawPath as any;
@@ -235,9 +287,8 @@ export const useRouteController = (
                 drawDestinationMarkers();
 
                 routeDistance.value = Math.round(totalKm);
-                const h = Math.floor(totalHours);
-                const m = Math.round((totalHours - h) * 60);
-                routeEta.value = `${h}h ${m}min`;
+                routeEta.value = formatEta(totalHours);
+                updateNextIntermediateStop(0, 0);
 
                 const lastStop =
                     waypointList.value[waypointList.value.length - 1]!;
@@ -984,13 +1035,8 @@ export const useRouteController = (
         const remHours = totalHours - currentHours;
         routeDistance.value = Math.round(remKm);
 
-        if (remHours > 0) {
-            const h = Math.floor(remHours);
-            const m = Math.round((remHours - h) * 60);
-            routeEta.value = `${h}h ${m}min`;
-        } else {
-            routeEta.value = "Arriving...";
-        }
+        routeEta.value = formatEta(remHours);
+        updateNextIntermediateStop(currentKm, currentHours);
 
         if (fullRouteDirections.value.length > 1) {
             const upcomingTurn = fullRouteDirections.value[1];
@@ -1070,6 +1116,9 @@ export const useRouteController = (
 
         waypointList.value = [];
         snappedWaypointNodeIds.value = [];
+        waypointStats.value = [];
+        nextStopDistance.value = null;
+        nextStopEta.value = "";
         isYardStart.value = false;
         fullRouteDirections.value = [];
         updateProfile("lastDestination", null);
@@ -1084,6 +1133,8 @@ export const useRouteController = (
         destinationName,
         routeDistance,
         routeEta,
+        nextStopDistance,
+        nextStopEta,
         isCalculating,
         routeFound,
         currentRoutePath,
