@@ -15,6 +15,50 @@ function git(repoRoot: string, args: string[]): string {
     }).trim();
 }
 
+function readSteamInstallState(appId: string): {
+    installedSteamBuildId: string | null;
+    installedSteamLastUpdated: string | null;
+} {
+    const candidates = [
+        join(
+            process.env.HOME || "",
+            ".local",
+            "share",
+            "Steam",
+            "steamapps",
+            `appmanifest_${appId}.acf`,
+        ),
+        join(
+            process.env.HOME || "",
+            ".steam",
+            "steam",
+            "steamapps",
+            `appmanifest_${appId}.acf`,
+        ),
+    ];
+
+    for (const manifestPath of candidates) {
+        if (!existsSync(manifestPath)) continue;
+
+        try {
+            const text = readFileSync(manifestPath, "utf8");
+            const buildMatch = text.match(/"buildid"\s+"([^"]+)"/);
+            const updatedMatch = text.match(/"LastUpdated"\s+"([^"]+)"/);
+            return {
+                installedSteamBuildId: buildMatch?.[1] || null,
+                installedSteamLastUpdated: updatedMatch?.[1] || null,
+            };
+        } catch {
+            // Try the next common Steam location.
+        }
+    }
+
+    return {
+        installedSteamBuildId: null,
+        installedSteamLastUpdated: null,
+    };
+}
+
 export default defineEventHandler((event) => {
     const repoRoot = process.env.TRUCKNAV_REPO_ROOT || process.cwd();
     const query = getQuery(event);
@@ -126,6 +170,8 @@ export default defineEventHandler((event) => {
             ".",
             ":(exclude)public/data/ats/**",
             ":(exclude)public/sprites/ats/**",
+            ":(exclude)public/data/ets2/**",
+            ":(exclude)public/sprites/ets2/**",
         ],
         {
             cwd: repoRoot,
@@ -144,6 +190,8 @@ export default defineEventHandler((event) => {
                 ".",
                 ":(exclude)public/data/ats/**",
                 ":(exclude)public/sprites/ats/**",
+                ":(exclude)public/data/ets2/**",
+                ":(exclude)public/sprites/ets2/**",
             ])
                 .split(/\r?\n/)
                 .filter(Boolean)
@@ -236,41 +284,9 @@ export default defineEventHandler((event) => {
         }
     }
 
-    let installedSteamBuildId: string | null = null;
-    let installedSteamLastUpdated: string | null = null;
-
-    const steamManifestCandidates = [
-        join(
-            process.env.HOME || "",
-            ".local",
-            "share",
-            "Steam",
-            "steamapps",
-            "appmanifest_270880.acf",
-        ),
-        join(
-            process.env.HOME || "",
-            ".steam",
-            "steam",
-            "steamapps",
-            "appmanifest_270880.acf",
-        ),
-    ];
-
-    for (const steamManifestPath of steamManifestCandidates) {
-        if (!existsSync(steamManifestPath)) continue;
-
-        try {
-            const text = readFileSync(steamManifestPath, "utf8");
-            const buildMatch = text.match(/"buildid"\s+"([^"]+)"/);
-            const updatedMatch = text.match(/"LastUpdated"\s+"([^"]+)"/);
-            installedSteamBuildId = buildMatch?.[1] || null;
-            installedSteamLastUpdated = updatedMatch?.[1] || null;
-            break;
-        } catch {
-            // Try the next common Steam location.
-        }
-    }
+    const atsSteam = readSteamInstallState("270880");
+    const installedSteamBuildId = atsSteam.installedSteamBuildId;
+    const installedSteamLastUpdated = atsSteam.installedSteamLastUpdated;
 
     const mapSteamBuildId =
         typeof map.steamBuildId === "string" ? map.steamBuildId : null;
@@ -278,6 +294,39 @@ export default defineEventHandler((event) => {
         !!installedSteamBuildId &&
         !!mapSteamBuildId &&
         installedSteamBuildId !== mapSteamBuildId;
+
+    const ets2ManifestPath = join(
+        repoRoot,
+        "public",
+        "data",
+        "ets2",
+        "map-data",
+        "trucknav-linux-map.json",
+    );
+    let ets2Map: Record<string, any> = { available: false };
+    if (existsSync(ets2ManifestPath)) {
+        try {
+            ets2Map = {
+                available: true,
+                ...JSON.parse(readFileSync(ets2ManifestPath, "utf8")),
+            };
+        } catch {
+            ets2Map = {
+                available: false,
+                error: "ETS2 map manifest could not be read",
+            };
+        }
+    }
+
+    const ets2Steam = readSteamInstallState("227300");
+    const ets2MapSteamBuildId =
+        typeof ets2Map.steamBuildId === "string"
+            ? ets2Map.steamBuildId
+            : null;
+    const ets2MapUpdateAvailable =
+        !!ets2Steam.installedSteamBuildId &&
+        !!ets2MapSteamBuildId &&
+        ets2Steam.installedSteamBuildId !== ets2MapSteamBuildId;
 
     return {
         access: {
@@ -303,6 +352,8 @@ export default defineEventHandler((event) => {
             installedSteamLastUpdated,
         },
         ets2: {
+            installedSteamBuildId: ets2Steam.installedSteamBuildId,
+            installedSteamLastUpdated: ets2Steam.installedSteamLastUpdated,
             bundledMapAvailable: existsSync(
                 join(
                     repoRoot,
@@ -312,6 +363,10 @@ export default defineEventHandler((event) => {
                     "TRUCKNAV_BUNDLED_MAP.txt",
                 ),
             ),
+            map: {
+                ...ets2Map,
+                mapUpdateAvailable: ets2MapUpdateAvailable,
+            },
         },
         map: {
             ...map,
