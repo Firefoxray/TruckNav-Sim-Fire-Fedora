@@ -68,11 +68,11 @@ else
 fi
 
 wait_for_telemetry_port() {
-  for ((i = 1; i <= 40; i++)); do
-    if ss -lnt 2>/dev/null | grep -Eq '[:.]30001[[:space:]]'; then
+  for ((i = 1; i <= 80; i++)); do
+    if telemetry_port_open; then
       return 0
     fi
-    sleep 0.5
+    sleep 0.25
   done
   return 1
 }
@@ -81,18 +81,28 @@ telemetry_pid="$(pid_from_file "$TELEMETRY_PID_FILE")"
 current_game=""
 [[ -f "$TELEMETRY_GAME_FILE" ]] && current_game="$(cat "$TELEMETRY_GAME_FILE" 2>/dev/null || true)"
 
-if is_pid_running "$telemetry_pid" && [[ "$current_game" != "$game" ]]; then
-  echo "Switching telemetry from ${current_game:-unknown} to $game_label..."
-  kill "$telemetry_pid" 2>/dev/null || true
-  sleep 2
-  rm -f "$TELEMETRY_PID_FILE" "$TELEMETRY_GAME_FILE"
-  pkill -f "TruckNavTelemetry.exe" 2>/dev/null || true
-  telemetry_pid=""
-fi
-
-if is_pid_running "$telemetry_pid" && [[ "$current_game" == "$game" ]]; then
-  echo "TruckNav telemetry helper is already running for $game_label (PID $telemetry_pid)."
+if [[ "$current_game" == "$game" ]] && telemetry_port_open; then
+  echo "Telemetry bridge is already listening for $game_label on port 30001."
 else
+  if is_pid_running "$telemetry_pid" || telemetry_port_open; then
+    if [[ "$current_game" == "$game" ]]; then
+      echo "Restarting stale $game_label telemetry helper..."
+    else
+      echo "Switching telemetry from ${current_game:-unknown} to $game_label..."
+    fi
+
+    if is_pid_running "$telemetry_pid"; then
+      kill "$telemetry_pid" 2>/dev/null || true
+      for ((i = 1; i <= 20; i++)); do
+        is_pid_running "$telemetry_pid" || break
+        sleep 0.1
+      done
+    fi
+
+    pkill -f "TruckNavTelemetry.exe" 2>/dev/null || true
+    rm -f "$TELEMETRY_PID_FILE" "$TELEMETRY_GAME_FILE"
+  fi
+
   echo "Starting TruckNav telemetry helper for $game_label with protontricks app id $app_id..."
   protontricks-launch --appid "$app_id" "$TELEMETRY_EXE" >"$PID_DIR/telemetry.log" 2>&1 &
   echo "$!" > "$TELEMETRY_PID_FILE"
