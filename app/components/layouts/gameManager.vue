@@ -12,6 +12,7 @@ const { updateProfile, activeSettings } = useSettings();
 const {
     isMobile,
     isElectron,
+    isWeb,
     isLinuxWeb,
     isLinuxLocalWeb,
 } = usePlatform();
@@ -148,7 +149,7 @@ function toggleModPanel() {
 
         <div class="content" :class="{ 'linux-content': isLinuxLocalWeb }">
             <LinuxControlCenter
-                v-if="isLinuxWeb"
+                v-if="isWeb"
                 :local-actions="isLinuxLocalWeb"
             />
 
