@@ -8,7 +8,9 @@ const PADDING_FREE = { top: 0, bottom: 0, left: 0, right: 0 };
 export const useMapCamera = (map: Ref<Map | null>) => {
     const isCameraLocked = ref(false);
     const isAutoFollowEnabled = ref(false);
+    const isHeadingUp = ref(false);
     const isNavigating = ref(false);
+    const mapBearing = ref(0);
 
     let targetCoords: [number, number] | null = null;
     let targetHeading: number = 0;
@@ -86,9 +88,9 @@ export const useMapCamera = (map: Ref<Map | null>) => {
             if (isCameraLocked.value && !isEasing && !isTargetAtOrigin) {
                 map.value.jumpTo({
                     center: [currentTruckCoords[0], currentTruckCoords[1]],
-                    // Preserve whatever bearing the user chose. The map starts
-                    // north-up, and manual rotation remains in effect while
-                    // the camera continues following the truck.
+                    ...(isHeadingUp.value
+                        ? { bearing: currentTruckHeading }
+                        : {}),
                     padding: isNavigating.value ? PADDING_NAV : PADDING_FREE,
                 });
             }
@@ -123,6 +125,22 @@ export const useMapCamera = (map: Ref<Map | null>) => {
     const initCameraListeners = () => {
         if (!map.value) return;
         startRenderLoop();
+
+        mapBearing.value = map.value.getBearing();
+
+        map.value.on("rotate", () => {
+            if (!map.value) return;
+            mapBearing.value = map.value.getBearing();
+        });
+
+        map.value.on("rotatestart", (e) => {
+            if (e.originalEvent && !isEasing) {
+                // Manual rotation always wins. Keep following position, but
+                // stop forcing the truck's heading until the heading-up
+                // button is explicitly enabled again.
+                isHeadingUp.value = false;
+            }
+        });
 
         const breakLockEvents = ["mousedown", "touchstart", "wheel"];
 
@@ -167,7 +185,9 @@ export const useMapCamera = (map: Ref<Map | null>) => {
 
         map.value.easeTo({
             center: currentTruckCoords,
-            // Do not overwrite the user's current map rotation.
+            bearing: isHeadingUp.value
+                ? currentTruckHeading
+                : map.value.getBearing(),
             pitch: map.value.getPitch(),
             duration: 350,
             padding: isNavigating.value ? PADDING_NAV : PADDING_FREE,
@@ -181,8 +201,56 @@ export const useMapCamera = (map: Ref<Map | null>) => {
             resumeCameraLock();
         } else {
             isCameraLocked.value = false;
+            isHeadingUp.value = false;
             if (autoLockTimer) clearTimeout(autoLockTimer);
         }
+    };
+
+    const setNorthUp = () => {
+        if (!map.value) return;
+
+        isHeadingUp.value = false;
+        isEasing = true;
+
+        if (easeTimeout) clearTimeout(easeTimeout);
+        easeTimeout = setTimeout(() => {
+            isEasing = false;
+        }, 500);
+
+        map.value.easeTo({
+            bearing: 0,
+            pitch: map.value.getPitch(),
+            duration: 350,
+        });
+    };
+
+    const toggleHeadingUp = () => {
+        if (!map.value) return;
+
+        if (isHeadingUp.value) {
+            setNorthUp();
+            return;
+        }
+
+        isHeadingUp.value = true;
+        isAutoFollowEnabled.value = true;
+        isCameraLocked.value = true;
+
+        if (!currentTruckCoords) return;
+
+        isEasing = true;
+        if (easeTimeout) clearTimeout(easeTimeout);
+        easeTimeout = setTimeout(() => {
+            isEasing = false;
+        }, 500);
+
+        map.value.easeTo({
+            center: currentTruckCoords,
+            bearing: currentTruckHeading,
+            pitch: map.value.getPitch(),
+            duration: 350,
+            padding: isNavigating.value ? PADDING_NAV : PADDING_FREE,
+        });
     };
 
     const followTruck = (coords: [number, number], heading: number) => {
@@ -230,8 +298,7 @@ export const useMapCamera = (map: Ref<Map | null>) => {
 
         map.value.easeTo({
             center: coords,
-            // Navigation follows position only. Bearing stays north-up unless
-            // the user manually rotates the map.
+            bearing: isHeadingUp.value ? heading : map.value.getBearing(),
             zoom: 11,
             pitch: map.value.getPitch(),
             duration: 350,
@@ -256,6 +323,8 @@ export const useMapCamera = (map: Ref<Map | null>) => {
         isCameraLocked,
         isNavigating,
         isAutoFollowEnabled,
+        isHeadingUp,
+        mapBearing,
         initMarker,
         updateMarkerSize,
         updateMarkerImage,
@@ -264,6 +333,8 @@ export const useMapCamera = (map: Ref<Map | null>) => {
         stopNavigationMode,
         resumeCameraLock,
         toggleAutoFollow,
+        toggleHeadingUp,
+        setNorthUp,
         lockCamera,
         startNavigationMode,
     };
