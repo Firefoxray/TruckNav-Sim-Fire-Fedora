@@ -40,7 +40,7 @@ echo
 
 (
     cd "$TRUCKNAV_MAPS_DIR"
-    NODE_OPTIONS="--max-old-space-size=8192" ./node_modules/.bin/tsx         "$EXPORTER_DST"         "$PARSE_DIR"         "$GRAPH_DIR"         "$OUT_DIR"
+    NODE_OPTIONS="--max-old-space-size=8192" ./node_modules/.bin/tsx         "$EXPORTER_DST"         usa         "$PARSE_DIR"         "$GRAPH_DIR"         "$OUT_DIR"
 )
 
 echo
