@@ -144,6 +144,29 @@ PY
 EOF_HELPER
 chmod +x "$BIN_DIR/trucknav-active-repo"
 
+cat > "$BIN_DIR/trucknav-active-game" <<'EOF_HELPER'
+#!/usr/bin/env bash
+set -euo pipefail
+CONFIG_PATH="${XDG_CONFIG_HOME:-$HOME/.config}/trucknav-linux-launcher/config.json"
+python3 - "$CONFIG_PATH" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+try:
+    config = json.loads(path.read_text(encoding="utf-8"))
+except Exception:
+    config = {}
+
+game = str(config.get("selected_game") or "ats")
+if game not in {"ats", "ets2"}:
+    game = "ats"
+print(game)
+PY
+EOF_HELPER
+chmod +x "$BIN_DIR/trucknav-active-game"
+
 cat > "$BIN_DIR/trucknav-linux-launcher" <<EOF_WRAPPER
 #!/usr/bin/env bash
 set -euo pipefail
@@ -185,7 +208,7 @@ cat > "$DESKTOP_DIR/trucknav-linux-launcher.desktop" <<EOF_DESKTOP
 Version=1.0
 Type=Application
 Name=TruckNav Linux Launcher
-Comment=Manage TruckNav Linux and American Truck Simulator
+Comment=Manage TruckNav Linux with ATS and ETS2
 Exec=$BIN_DIR/trucknav-linux-launcher
 Icon=$ICON_PATH
 Terminal=false
