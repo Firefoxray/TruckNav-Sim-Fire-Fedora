@@ -2,7 +2,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import type { Position } from '@truckermudgeon/base/geom';
-import { fromWgs84ToAtsCoords } from '@truckermudgeon/map/projections';
+import {
+  fromWgs84ToAtsCoords,
+  fromWgs84ToEts2Coords,
+} from '@truckermudgeon/map/projections';
 
 const TRUCKNAV_MERCATOR_R = 300000.0;
 
@@ -14,6 +17,20 @@ function toTruckNavCoords([gameX, gameY]: Position): [number, number] {
   return [lon, lat];
 }
 
+const [mapArg, inputArg, outputArg] = process.argv.slice(2);
+if (
+  (mapArg !== 'usa' && mapArg !== 'europe') ||
+  !inputArg ||
+  !outputArg
+) {
+  console.error(
+    'usage: tsx trucknav-reproject-geojson.ts <usa|europe> <input.geojson> <output.geojson>',
+  );
+  process.exit(2);
+}
+
+const mapName = mapArg as 'usa' | 'europe';
+
 function reprojectPoint(value: unknown): unknown {
   if (
     Array.isArray(value) &&
@@ -21,7 +38,10 @@ function reprojectPoint(value: unknown): unknown {
     typeof value[0] === 'number' &&
     typeof value[1] === 'number'
   ) {
-    const game = fromWgs84ToAtsCoords([value[0], value[1]]);
+    const game =
+      mapName === 'usa'
+        ? fromWgs84ToAtsCoords([value[0], value[1]])
+        : fromWgs84ToEts2Coords([value[0], value[1]]);
     return toTruckNavCoords(game);
   }
 
@@ -30,14 +50,6 @@ function reprojectPoint(value: unknown): unknown {
   }
 
   return value;
-}
-
-const [inputArg, outputArg] = process.argv.slice(2);
-if (!inputArg || !outputArg) {
-  console.error(
-    'usage: tsx trucknav-reproject-geojson.ts <input.geojson> <output.geojson>',
-  );
-  process.exit(2);
 }
 
 const input = path.resolve(inputArg);
@@ -97,6 +109,8 @@ fs.writeFileSync(output, JSON.stringify(data));
 
 const visualManifest = {
   schemaVersion: 1,
+  game: mapName === 'usa' ? 'ats' : 'ets2',
+  map: mapName,
   projection: 'trucknav-flat-mercator-r300000',
   features: data.features.length,
   bounds: { minX, minY, maxX, maxY },
