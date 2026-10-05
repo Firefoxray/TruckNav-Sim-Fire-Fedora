@@ -24,8 +24,10 @@ status_pid() {
 }
 
 echo "TruckNav repository: $REPO_ROOT"
-echo "ATS Steam app id: $TRUCKNAV_ATS_APP_ID"
-echo "TruckNav URL: $TRUCKNAV_URL"
+echo "ATS Steam app id:  $TRUCKNAV_ATS_APP_ID"
+echo "ETS2 Steam app id: $TRUCKNAV_ETS2_APP_ID"
+echo "Selected game:     $TRUCKNAV_GAME"
+echo "TruckNav URL:      $TRUCKNAV_URL"
 echo
 status_command node
 status_command npm
