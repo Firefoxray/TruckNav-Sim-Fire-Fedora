@@ -48,8 +48,10 @@ cd "$REPO_ROOT"
 export TRUCKNAV_REPO_ROOT="$REPO_ROOT"
 export TRUCKNAV_GAME="$game"
 
-if [[ "$game" == "ets2" && ! -f "$REPO_ROOT/public/data/ets2/TRUCKNAV_BUNDLED_MAP.txt" ]]; then
-  echo "Preparing bundled ETS2 map..."
+if [[ "$game" == "ets2" \
+   && ! -f "$REPO_ROOT/public/data/ets2/TRUCKNAV_TEST_BUILD.txt" \
+   && ! -f "$REPO_ROOT/public/data/ets2/TRUCKNAV_BUNDLED_MAP.txt" ]]; then
+  echo "Preparing bundled ETS2 map fallback..."
   bash "$REPO_ROOT/scripts/linux/prepare-ets2-bundled-map.sh"
 fi
 
