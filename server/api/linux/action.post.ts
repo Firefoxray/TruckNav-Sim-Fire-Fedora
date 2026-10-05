@@ -43,8 +43,12 @@ function processAlive(pid: number): boolean {
 export default defineEventHandler(async (event) => {
     assertManageRequest(event);
 
-    const body = await readBody<{ action?: LinuxAction }>(event);
+    const body = await readBody<{
+        action?: LinuxAction;
+        game?: "ats" | "ets2";
+    }>(event);
     const action = body?.action;
+    const game = body?.game === "ets2" ? "ets2" : "ats";
 
     if (action !== "update-app" && action !== "rebuild-map") {
         throw createError({
@@ -82,7 +86,9 @@ export default defineEventHandler(async (event) => {
     const relativeScript =
         action === "update-app"
             ? "scripts/linux/update-trucknav-linux.sh"
-            : "scripts/map-data/rebuild-ats-trucknav-runtime.sh";
+            : game === "ets2"
+              ? "scripts/map-data/rebuild-ets2-trucknav-runtime.sh"
+              : "scripts/map-data/rebuild-ats-trucknav-runtime.sh";
 
     const scriptPath = join(repoRoot, relativeScript);
     if (!existsSync(scriptPath)) {
@@ -121,6 +127,7 @@ export default defineEventHandler(async (event) => {
         JSON.stringify(
             {
                 action,
+                game: action === "rebuild-map" ? game : null,
                 pid: wrapper.pid,
                 startedAt: new Date().toISOString(),
             },
@@ -134,6 +141,7 @@ export default defineEventHandler(async (event) => {
     return {
         started: true,
         action,
+        game: action === "rebuild-map" ? game : null,
         pid: wrapper.pid,
         clientIp: getTruckNavClientIp(event),
     };
