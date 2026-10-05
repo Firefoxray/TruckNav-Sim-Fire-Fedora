@@ -14,22 +14,19 @@ import {
     defineEventHandler,
     readBody,
 } from "h3";
+import {
+    canManageTruckNavHost,
+    getTruckNavClientIp,
+} from "../../utils/trucknavAccess";
 
 type LinuxAction = "update-app" | "rebuild-map";
 
-function assertLocalRequest(event: any) {
-    const remote = event.node.req.socket.remoteAddress || "";
-    const allowed = new Set([
-        "127.0.0.1",
-        "::1",
-        "::ffff:127.0.0.1",
-    ]);
-
-    if (!allowed.has(remote)) {
+function assertManageRequest(event: any) {
+    if (!canManageTruckNavHost(event)) {
         throw createError({
             statusCode: 403,
             statusMessage:
-                "TruckNav Linux maintenance actions are local-only.",
+                "TruckNav Linux maintenance actions are limited to the private LAN.",
         });
     }
 }
@@ -44,7 +41,7 @@ function processAlive(pid: number): boolean {
 }
 
 export default defineEventHandler(async (event) => {
-    assertLocalRequest(event);
+    assertManageRequest(event);
 
     const body = await readBody<{ action?: LinuxAction }>(event);
     const action = body?.action;
@@ -138,5 +135,6 @@ export default defineEventHandler(async (event) => {
         started: true,
         action,
         pid: wrapper.pid,
+        clientIp: getTruckNavClientIp(event),
     };
 });
