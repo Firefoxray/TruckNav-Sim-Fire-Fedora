@@ -85,3 +85,13 @@
     width: var(--hud-btn-size);
     height: var(--hud-btn-size);
 }
+
+
+.compass-icon {
+    transition: transform 120ms linear;
+    transform-origin: center;
+}
+
+.heading-icon {
+    transform: rotate(-45deg);
+}
