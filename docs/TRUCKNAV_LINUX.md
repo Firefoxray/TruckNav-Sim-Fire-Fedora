@@ -112,13 +112,17 @@ The old Testing worktree can then be removed after it is no longer needed.
 
 ## Launcher development workflow
 
-The Tk launcher includes two actions that do not require a running truck game:
+The Tk launcher keeps the common controls in a compact 3×2 grid. **Update
+TruckNav** lives beside the Stable/Testing channel controls because updating the
+application is independent of either truck game.
 
 - **Update TruckNav** fetches/fast-forwards the active Stable or Testing
   checkout, validates it with a Nuxt production build, and refreshes the
-  installed launcher/desktop files.
-- **Launch UI only (no game)** starts only the Nuxt web application. It does
-  not launch ATS/ETS2 and does not start the telemetry helper.
+  installed launcher/desktop files. It does not launch ATS or ETS2.
+- **Launch TruckNav** starts the web application plus the telemetry helper but
+  does not automatically start ATS.
+- **Launch ATS + TruckNav together** starts ATS when needed and then starts the
+  telemetry helper after the game is detected.
 
-Use UI-only mode for interface/settings/update testing. Use
-**Launch ATS + TruckNav together** only when live game telemetry is needed.
+A separate `launch-web-only.sh` helper remains available for development from
+the terminal, but it is intentionally not exposed as a large launcher button.
