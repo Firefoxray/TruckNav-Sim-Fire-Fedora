@@ -282,3 +282,67 @@ if new_parse_throw not in convert_text:
     print("Patched SII parser error diagnostics.")
 else:
     print("SII parser error diagnostics patch already applied.")
+
+
+# Current ETS2 uses image format 93 for some UI/map textures.
+# DXGI format 93 is B8G8R8X8_UNORM_SRGB, which has the same 4-byte raw pixel
+# layout as formats 88 (B8G8R8X8_UNORM) and 91 (B8G8R8A8_UNORM_SRGB) that
+# the pinned archive reader already supports.
+scs_archive = (
+    root
+    / "packages"
+    / "clis"
+    / "parser"
+    / "game-files"
+    / "scs-archive.ts"
+)
+if not scs_archive.is_file():
+    raise SystemExit(f"missing expected file: {scs_archive}")
+
+archive_text = scs_archive.read_text(encoding="utf-8")
+
+old_image_branch = """    } else if (imageFormat === 91 || imageFormat === 88) {
+      // 91: B8G8R8A8_UNORM_SRGB
+      // 88: B8G8R8X8_UNORM
+"""
+new_image_branch = """    } else if (
+      imageFormat === 91 ||
+      imageFormat === 88 ||
+      imageFormat === 93
+    ) {
+      // 91: B8G8R8A8_UNORM_SRGB
+      // 88: B8G8R8X8_UNORM
+      // 93: B8G8R8X8_UNORM_SRGB
+"""
+
+if new_image_branch not in archive_text:
+    if old_image_branch not in archive_text:
+        raise SystemExit(
+            "truckermudgeon/maps changed unexpectedly; could not patch "
+            "ETS2 image format 93 compatibility"
+        )
+    archive_text = archive_text.replace(
+        old_image_branch, new_image_branch, 1
+    )
+
+old_fourcc = """            imageFormat === 91 || imageFormat === 88
+              ? '\\x00\\x00\\x00\\x00'
+              : 'DXT5',
+"""
+new_fourcc = """            imageFormat === 91 ||
+            imageFormat === 88 ||
+            imageFormat === 93
+              ? '\\x00\\x00\\x00\\x00'
+              : 'DXT5',
+"""
+
+if new_fourcc not in archive_text:
+    if old_fourcc not in archive_text:
+        raise SystemExit(
+            "truckermudgeon/maps changed unexpectedly; could not patch "
+            "ETS2 DDS header handling for image format 93"
+        )
+    archive_text = archive_text.replace(old_fourcc, new_fourcc, 1)
+
+scs_archive.write_text(archive_text, encoding="utf-8")
+print("Patched ETS2 image format 93 compatibility.")
