@@ -2,6 +2,10 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { defineEventHandler, getQuery } from "h3";
+import {
+    canManageTruckNavHost,
+    getTruckNavClientIp,
+} from "../../utils/trucknavAccess";
 
 function git(repoRoot: string, args: string[]): string {
     return execFileSync("git", args, {
@@ -245,6 +249,10 @@ export default defineEventHandler((event) => {
         installedSteamBuildId !== mapSteamBuildId;
 
     return {
+        access: {
+            maintenanceAllowed: canManageTruckNavHost(event),
+            clientIp: getTruckNavClientIp(event),
+        },
         app: {
             branch,
             commit,
