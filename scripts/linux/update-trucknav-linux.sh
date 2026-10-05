@@ -77,6 +77,16 @@ echo "Validating updated application..."
 npm run build
 
 echo
+echo "Refreshing installed TruckNav Linux launcher..."
+if [[ -x "$REPO_ROOT/scripts/linux/install-desktop-files.sh" ]]; then
+  if [[ "$branch" == "master" ]]; then
+    bash "$REPO_ROOT/scripts/linux/install-desktop-files.sh" --activate stable
+  else
+    bash "$REPO_ROOT/scripts/linux/install-desktop-files.sh" --activate testing
+  fi
+fi
+
+echo
 echo "TruckNav Linux updated successfully."
 echo "Old commit: ${old_head:0:10}"
 echo "New commit: ${target_head:0:10}"
