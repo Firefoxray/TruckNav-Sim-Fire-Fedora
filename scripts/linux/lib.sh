@@ -133,3 +133,8 @@ find_steam_game_dir() {
 
   return 1
 }
+
+
+telemetry_port_open() {
+  ss -lnt 2>/dev/null | grep -Eq '[:.]30001[[:space:]]'
+}
