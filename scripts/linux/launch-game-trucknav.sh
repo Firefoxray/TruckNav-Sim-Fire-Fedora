@@ -171,77 +171,42 @@ start_telemetry() {
   fi
 }
 
-monitor_game() {
-  local missing_checks=0
-  local waiting_checks=0
-  local real_process_lines_output=""
-  local real_process_line=""
-
-  while true; do
-    real_process_lines_output="$(game_real_process_lines)"
-    real_process_line="${real_process_lines_output%%$'\n'*}"
-
-    if [[ -n "$real_process_line" ]]; then
-      echo "$game_label game process detected: $real_process_line"
-      echo "Monitoring real $game_label process"
-      break
-    fi
-
-    waiting_checks=$((waiting_checks + 1))
-    if ! game_startup_process_matches; then
-      missing_checks=$((missing_checks + 1))
-      if ((missing_checks >= 60)); then
-        echo "$game_label process was not detected."
-        echo "TruckNav will keep running; use Stop TruckNav when finished."
-        return 0
-      fi
-    else
-      missing_checks=0
-    fi
-
-    if ((waiting_checks % 10 == 0)); then
-      echo "Waiting for real $game_label game process..."
-    fi
-    sleep 1
-  done
-
-  missing_checks=0
-  while true; do
-    if game_real_process_matches; then
-      missing_checks=0
-    else
-      missing_checks=$((missing_checks + 1))
-      if ((missing_checks >= 3)); then
-        echo "$game_label process exited"
-        echo "Stopping TruckNav"
-        return 0
-      fi
-    fi
-    sleep 2
-  done
-}
-
 echo "Starting TruckNav web app"
 start_web_app
 
 if game_real_process_matches; then
   echo "$game_label is already running; leaving the game open."
-elif game_startup_process_matches; then
-  echo "$game_label is already starting; not launching a second copy."
+
+  # Safe fast path: the game's Proton prefix is already initialized, so the
+  # telemetry helper can start immediately.
+  echo "Starting telemetry"
+  start_telemetry
+  echo "TruckNav telemetry ready in $((SECONDS - launch_started))s."
 else
-  echo "Launching $game_label"
-  steam "steam://rungameid/$app_id" >/dev/null 2>&1 &
+  if game_startup_process_matches; then
+    echo "$game_label is already starting; not launching a second copy."
+  else
+    echo "Launching $game_label"
+    steam "steam://rungameid/$app_id" >/dev/null 2>&1 &
+  fi
+
+  # Do not start a second Proton process against the same prefix while Steam
+  # is still bootstrapping the game. That race can destabilize Proton/Wine
+  # startup. Instead, wait only until the real game process appears; there is
+  # no fixed post-detection delay.
+  echo "Waiting for $game_label game process before starting telemetry..."
+  if ! wait_for_real_game_process; then
+    echo "$game_label did not reach a running game process." >&2
+    echo "TruckNav web will stay up; telemetry was not started." >&2
+    exit 1
+  fi
+
+  echo "Starting telemetry"
+  start_telemetry
+  echo "TruckNav telemetry ready in $((SECONDS - launch_started))s."
 fi
 
-# The telemetry helper is a listener and does not need the game to be fully
-# booted first. Start it immediately so game startup and Proton helper startup
-# overlap instead of adding fixed delays.
-echo "Starting telemetry"
-start_telemetry
-echo "TruckNav telemetry ready in $((SECONDS - launch_started))s."
-
-echo "Monitoring $game_label"
-monitor_game
+monitor_game_exit
 
 # Preserve the original combined-launch behavior: once the game exits, stop
 # TruckNav web + telemetry. This never stops Steam or the game itself.
