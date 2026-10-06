@@ -171,6 +171,107 @@ start_telemetry() {
   fi
 }
 
+wait_for_real_game_process() {
+  local startup_seen=0
+  local missing_after_start=0
+  local real_process_lines_output=""
+  local real_process_line=""
+  local stable_hits=0
+
+  for ((i = 1; i <= 240; i++)); do
+    real_process_lines_output="$(game_real_process_lines)"
+    real_process_line="${real_process_lines_output%%
+start_web_app
+
+if game_real_process_matches; then
+  echo "$game_label is already running; leaving the game open."
+
+  # Safe fast path: the game's Proton prefix is already initialized, so the
+  # telemetry helper can start immediately.
+  echo "Starting telemetry"
+  start_telemetry
+  echo "TruckNav telemetry ready in $((SECONDS - launch_started))s."
+else
+  if game_startup_process_matches; then
+    echo "$game_label is already starting; not launching a second copy."
+  else
+    echo "Launching $game_label"
+    steam "steam://rungameid/$app_id" >/dev/null 2>&1 &
+  fi
+
+  # Do not start a second Proton process against the same prefix while Steam
+  # is still bootstrapping the game. That race can destabilize Proton/Wine
+  # startup. Instead, wait only until the real game process appears; there is
+  # no fixed post-detection delay.
+  echo "Waiting for $game_label game process before starting telemetry..."
+  if ! wait_for_real_game_process; then
+    echo "$game_label did not reach a running game process." >&2
+    echo "TruckNav web will stay up; telemetry was not started." >&2
+    exit 1
+  fi
+
+  echo "Starting telemetry"
+  start_telemetry
+  echo "TruckNav telemetry ready in $((SECONDS - launch_started))s."
+fi
+
+monitor_game_exit
+
+# Preserve the original combined-launch behavior: once the game exits, stop
+# TruckNav web + telemetry. This never stops Steam or the game itself.
+"$REPO_ROOT/scripts/linux/stop-trucknav.sh"
+\n'*}"
+
+    if [[ -n "$real_process_line" ]]; then
+      # Require the real process to survive two consecutive checks. This is
+      # only ~250 ms, but avoids racing a just-created Proton/Wine process.
+      stable_hits=$((stable_hits + 1))
+      if ((stable_hits >= 2)); then
+        echo "$game_label game process detected: $real_process_line"
+        return 0
+      fi
+    else
+      stable_hits=0
+    fi
+
+    if game_startup_process_matches; then
+      startup_seen=1
+      missing_after_start=0
+    elif (( startup_seen == 1 )); then
+      missing_after_start=$((missing_after_start + 1))
+      if (( missing_after_start >= 12 )); then
+        return 1
+      fi
+    fi
+
+    if (( i % 20 == 0 )); then
+      echo "Waiting for $game_label game process..."
+    fi
+    sleep 0.25
+  done
+
+  return 1
+}
+
+monitor_game_exit() {
+  local missing_checks=0
+
+  echo "Monitoring real $game_label process"
+  while true; do
+    if game_real_process_matches; then
+      missing_checks=0
+    else
+      missing_checks=$((missing_checks + 1))
+      if (( missing_checks >= 3 )); then
+        echo "$game_label process exited"
+        echo "Stopping TruckNav"
+        return 0
+      fi
+    fi
+    sleep 2
+  done
+}
+
 echo "Starting TruckNav web app"
 start_web_app
 
