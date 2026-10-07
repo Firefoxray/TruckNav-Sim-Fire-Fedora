@@ -1,173 +1,162 @@
 # TruckNav Linux
 
 TruckNav Linux is the Linux-focused fork of TruckNav. It keeps the original
-TruckNav navigation UI and project lineage while adding a native Linux workflow
-for ATS, local map generation, and self-update support.
+TruckNav navigation UI and project lineage while adding a Fedora/Linux launcher,
+local ATS/ETS2 map generation, shared browser settings, and Linux-friendly
+telemetry handling.
 
-## Local control center
+## Linux launcher
 
-When TruckNav is opened locally on Linux at `127.0.0.1` or `localhost`, the
-game manager shows a TruckNav Linux control center with:
+The launcher provides:
 
-- current Git branch and commit;
-- source/update status;
-- locally generated ATS map version;
-- newest supported ATS DLC;
-- **Check for Updates**;
-- **Update TruckNav**;
-- **Rebuild ATS Map**.
+- ATS / ETS2 selection;
+- Stable / Testing channels;
+- Launch TruckNav;
+- Launch the selected game + TruckNav;
+- Stop TruckNav;
+- Open TruckNav in a browser;
+- dependency/status checks;
+- installer/repair actions;
+- TruckNav self-update.
 
-Maintenance actions are accepted only from loopback requests. A browser opened
-from another machine on the LAN can view TruckNav, but cannot trigger update or
-map rebuild commands.
-
-## App updates
-
-The control center calls the local updater:
-
-```bash
-scripts/linux/update-trucknav-linux.sh
-```
-
-The updater:
-
-1. refuses to overwrite tracked source changes;
-2. fetches the configured upstream branch;
-3. fast-forwards only (no automatic conflict resolution);
-4. refreshes `node_modules` only when package metadata changed;
-5. runs a production Nuxt build as validation.
-
-Generated ATS runtime data is intentionally ignored by the source dirty check.
-
-## ATS map updates
-
-**Rebuild ATS Map** runs:
-
-```bash
-scripts/map-data/rebuild-ats-trucknav-runtime.sh
-```
-
-against the installed ATS files. It regenerates routing, PMTiles, sprites,
-cities, companies, and the TruckNav Linux map manifest. ATS itself can remain
-running while TruckNav is rebuilt; restart ATS only when the telemetry plugin
-DLL itself changes.
-
-The generated runtime manifest is:
+The selected game and launcher preferences are stored under:
 
 ```
-public/data/ats/map-data/trucknav-linux-map.json
+~/.config/trucknav-linux-launcher/
 ```
 
-and includes the ATS version, supported DLC count, projection, graph metadata,
-visual bounds, and generation timestamp.
-
-## Launch behavior
-
-`scripts/linux/launch-ats-trucknav.sh` reuses an already running ATS process.
-It starts the TruckNav web app, waits until ATS is available, then starts the
-telemetry helper. This allows UI/map development without repeatedly restarting
-the game.
-
+The launcher version comes from the repository-root `VERSION` file. A checkout
+on `master` is displayed as **Stable**; development branches are displayed as
+**Testing**.
 
 ## Stable and Testing channels
 
-The Fedora desktop launcher is channel-aware. It keeps two repository paths in:
+The launcher can keep two local checkouts:
 
-```
-~/.config/trucknav-linux-launcher/config.json
-```
-
-The intended layout during development is:
-
-```
-Stable  -> TruckNav-Sim-Fire-Fedora       (master)
-Testing -> TruckNav-Sim-South-Dakota      (development worktree)
+```text
+Stable  -> master
+Testing -> any development worktree/branch
 ```
 
-The application-menu shortcuts resolve the active channel at launch time, so
-they do not need to be recreated whenever the active checkout changes. The GUI
-launcher shows **Stable** and **Testing** buttons and restarts itself after a
-channel switch.
+The Testing checkout does not need a particular branch or directory name.
 
-Install/refresh the channel-aware shortcuts from a checkout with:
-
-```bash
-bash scripts/linux/install-desktop-files.sh --activate testing
-```
-
-or:
+Install or refresh desktop integration with:
 
 ```bash
 bash scripts/linux/install-desktop-files.sh --activate stable
 ```
 
-The launcher UI and icon are copied under `~/.local/share/trucknav-linux/` so
-the channel switcher remains available even if the active checkout itself is an
-older stable revision.
+or:
 
-When a tested feature branch is merged into master, activate **Stable** and the
-normal application-menu shortcuts immediately start using the master checkout.
-The old Testing worktree can then be removed after it is no longer needed.
-
-
-## Launcher development workflow
-
-The Tk launcher keeps the common controls in a compact 3×2 grid. **Update
-TruckNav** lives beside the Stable/Testing channel controls because updating the
-application is independent of either truck game.
-
-- **Update TruckNav** fetches/fast-forwards the active Stable or Testing
-  checkout, validates it with a Nuxt production build, and refreshes the
-  installed launcher/desktop files. It does not launch ATS or ETS2.
-- **Launch TruckNav** starts the web application plus the telemetry helper but
-  does not automatically start ATS.
-- **Launch ATS + TruckNav together** starts ATS when needed and then starts the
-  telemetry helper after the game is detected.
-
-A separate `launch-web-only.sh` helper remains available for development from
-the terminal, but it is intentionally not exposed as a large launcher button.
-
-
-## Versioning
-
-TruckNav Linux tracks its fork version in the repository-root `VERSION` file.
-The current development line starts at `1.1.0`. User-facing badges omit a
-trailing patch zero, so `1.1.0` renders as **1.1 Testing** on a development
-branch and **1.1 Stable** on `master`.
-
-Patch/minor/major version changes are made by updating `VERSION`; the launcher
-and web control center read the file directly.
-
-
-## ETS2 compatibility mode
-
-TruckNav Linux 1.2 adds a game selector for ATS and ETS2.
-
-ETS2 currently uses the existing TruckNav ETS2 map bundle. The Testing
-checkout stages that bundle from the Stable checkout when ETS2 is launched.
-Live telemetry uses Steam app id `227300` and the same TruckNav telemetry
-bridge used by ATS.
-
-The current telemetry path uses the Windows SCS plugin and
-`TruckNavTelemetry.exe`, so ETS2 must be configured to run through Proton.
-The launcher installs `electron/bin/scs-telemetry.dll` into:
-
-```
-Euro Truck Simulator 2/bin/win_x64/plugins/
+```bash
+bash scripts/linux/install-desktop-files.sh --activate testing
 ```
 
-before starting the game.
+## Telemetry
 
-The bundled map is only a fallback so ETS2 can launch immediately. TruckNav
-Linux 1.3 also includes a fresh Europe rebuild path that parses the installed
-ETS2 files, generates Europe routing/visual source data, exports TruckNav
-routing binaries, builds PMTiles/sprites/cities/companies, writes a versioned
-ETS2 map manifest, and installs the result into `public/data/ets2`.
+ATS uses Steam app id `270880`; ETS2 uses `227300`.
 
-The one-command rebuild is:
+TruckNav Linux installs `electron/bin/scs-telemetry.dll` into the selected
+game's `bin/win_x64/plugins/` directory when needed and starts
+`TruckNavTelemetry.exe` through the matching Proton prefix.
+
+The browser does not connect directly to port 30001. Nitro connects to the
+local helper and exposes telemetry through the same TruckNav web origin, which
+allows localhost, LAN browsers, and local reverse-proxy hostnames to use the
+same live data without exposing the telemetry socket directly.
+
+The combined game launcher avoids starting the telemetry Proton process while
+Steam is still bootstrapping the game. Once the real game process exists,
+telemetry starts immediately; there is no fixed post-launch wait.
+
+## Web control center
+
+The Linux web control center shows:
+
+- branch / version information;
+- update state;
+- map version and Steam-build tracking;
+- TruckNav update controls;
+- ATS / ETS2 map rebuild controls;
+- maintenance-job output.
+
+Shared administration is enabled by default for browsers that can reach this
+personal TruckNav instance. To make remote browsers view-only:
+
+```bash
+TRUCKNAV_SHARED_ADMIN=0
+```
+
+Do not expose the service to an untrusted public network with shared
+administration enabled.
+
+## Shared settings
+
+Normal TruckNav preferences are stored on the host and synchronized across
+browsers. Route destination state remains per-browser so one client does not
+fight another client's active route.
+
+## ATS map rebuild
+
+Run:
+
+```bash
+bash scripts/map-data/rebuild-ats-trucknav-runtime.sh
+```
+
+See [ATS_MAP_BUILD.md](ATS_MAP_BUILD.md) for details.
+
+## ETS2 map rebuild
+
+TruckNav Linux also includes a Europe rebuild pipeline:
 
 ```bash
 bash scripts/map-data/rebuild-ets2-trucknav-runtime.sh
 ```
 
-The web control center's **Rebuild ETS2 Map** button runs the same pipeline.
+The parser/export/visual stages have been validated on current ETS2 1.61 data.
+The ETS2 in-game path is newer than the ATS path, so the existing bundled ETS2
+map remains available as a fallback until the fresh runtime has been tested on
+a given installation.
+
+If the heavy parser/source stages have already completed, the final packaging
+can be resumed without parsing Europe again:
+
+```bash
+bash scripts/map-data/finish-ets2-trucknav-runtime.sh
+```
+
+## Updating the fork
+
+`scripts/linux/update-trucknav-linux.sh`:
+
+1. refuses to overwrite tracked source changes;
+2. fetches the configured upstream branch;
+3. fast-forwards only;
+4. refreshes dependencies when package metadata changes;
+5. runs a production Nuxt build as validation;
+6. refreshes the installed launcher/desktop integration.
+
+Generated map/runtime data is excluded from the source-dirty check.
+
+## Development helpers
+
+UI only:
+
+```bash
+bash scripts/linux/launch-web-only.sh
+```
+
+TruckNav + telemetry:
+
+```bash
+bash scripts/linux/launch-trucknav.sh ats
+bash scripts/linux/launch-trucknav.sh ets2
+```
+
+Game + TruckNav:
+
+```bash
+bash scripts/linux/launch-game-trucknav.sh ats
+bash scripts/linux/launch-game-trucknav.sh ets2
+```
