@@ -1,6 +1,6 @@
 # Truck Nav
 
-**Truck Nav** is an external GPS navigation system for Euro Truck Simulator 2 and American Truck Siulator built using Typescript. It runs as an APK, EXE or browser (perfect for a phone, tablet or second monitor) and provides real-time tracking and routing based on the in-game map.
+**Truck Nav** is an external GPS navigation system for Euro Truck Simulator 2 and American Truck Siulator built using TypeScript. It runs as an APK (Android), EXE (Desktop) or browser-perfect for a phone, tablet or second monitor and provides real-time tracking, live ETAs, and routing based on the in-game map.
 
 <div align="center">
     <a href="https://discord.gg/C5BTXCF2jC">
@@ -24,14 +24,14 @@ Please consider this project a **Demo** or **Alpha**.
 
 While the core navigation works, the project is far from perfect. Creating the routing graph required a massive amount of work in **QGIS** and scripting, fixing road segments, roundabouts, and intersections to ensure the GPS knows where it can and cannot go.
 
-- **ATS / ETS2 Version**: Up to **1.58** ✅
-- **Supported DLCs**: All ✅
-- **Map Mods**: None ❌
+- **ATS / ETS2 Version**: Up to **1.61** ✅
+- **Supported DLCs**: All official map DLCs ✅
+- **Map Mods**: **ProMods** (ETS2 & Canada) ✅
 
 # Known Issues & Limitations
 ### ⚠️ Common Quirks
 *   **Company Areas:** GPS routing might fail if you are deep inside a company yard. Try moving your truck slightly toward the exit before setting the destination if errors are happening.
-*   **Map Gaps:** The graph I currently use can produce some errors (disconnected roads, illegal U-turns) but should 99% of the time show the correct route.
+*   **Map Gaps:** The graph I currently use can produce some errors (disconnected roads, illegal U-turns) but should ~99% of the time show the correct route.
 
 ### 📈 Performance & Compatibility
 > [!NOTE]
@@ -39,18 +39,14 @@ While the core navigation works, the project is far from perfect. Creating the r
 >*  **Map Support:** Currently supports base _**ETS2/ATS + all DLCs** (**up to v1.58**)_. ProMods and other map mods are **NOT** yet supported.
 
 > [!CAUTION]
-> **Real Company Name Mods:** If you use other mods that change company names other than the mod from **MLH82**, the navigation will likely fail or route incorrectly. The app is optimized for only vanilla and _**Real companies, gas station & billboards for ATS and ETS2**_ by **MLH82**.
-# Installation via .exe File
+> **Real Company Name Mods:** Not supported anymore with the latest version.
+# Installation via Desktop (.exe) & Android (.apk)
 
 1. Download the latest setup file from the
   [Releases](https://github.com/Rares-Muntean/ets2-navigation-gps/releases) page.
-
 2. Run the downloaded setup file and complete the installation.
-
 3. Launch Truck Nav on your PC.
-
-4. Install the .apk file on your tablet or phone.
-
+4. *(Optional for Mobile)* Install the `.apk` on your tablet or phone.
 5. Open the **mobile app** or the **web browser on any device** and enter the IP address displayed in the PC application.
 
 # Instalation via nodejs
@@ -129,7 +125,7 @@ If you are a Linux user and need a solution immediately, please use the communit
 3.  **Routing:** A custom graph built from game files allows the app to calculate the shortest path to your destination.
 
 <div align="center">
-    <img width="895" height="649" alt="close-up-gps" src="https://github.com/user-attachments/assets/4c593709-6f91-4109-9685-bc292ead920e" />
+    <img width="895" height="400" alt="close-up-gps" src="https://github.com/user-attachments/assets/4c593709-6f91-4109-9685-bc292ead920e" />
 </div>
 
 # How You Can Help Improve the Map
