@@ -52,6 +52,11 @@ let headingOffset = 0;
 let socket: WebSocket | null = null;
 let relayPollTimer: ReturnType<typeof setInterval> | null = null;
 let relayPollInFlight = false;
+let lastRelaySuccessAt = 0;
+
+const RELAY_POLL_INTERVAL_MS = 150;
+const RELAY_REQUEST_TIMEOUT_MS = 2500;
+const RELAY_DISCONNECT_GRACE_MS = 3000;
 
 function sendDiscordRpcState(payload: {
     game: string;
@@ -98,23 +103,39 @@ export function useEtsTelemetry() {
         if (canUseServerRelay) {
             if (relayPollTimer) return;
 
+            const markDisconnectedIfStale = () => {
+                if (
+                    lastRelaySuccessAt === 0 ||
+                    Date.now() - lastRelaySuccessAt >= RELAY_DISCONNECT_GRACE_MS
+                ) {
+                    resetDataOnDisconnected(onUpdate);
+                }
+            };
+
             const pollRelay = async () => {
                 if (relayPollInFlight) return;
                 relayPollInFlight = true;
 
+                const controller = new AbortController();
+                const timeout = setTimeout(
+                    () => controller.abort(),
+                    RELAY_REQUEST_TIMEOUT_MS,
+                );
+
                 try {
                     const response = await fetch("/api/telemetry", {
                         cache: "no-store",
+                        signal: controller.signal,
                     });
 
                     if (!response.ok) {
-                        resetDataOnDisconnected(onUpdate);
+                        markDisconnectedIfStale();
                         return;
                     }
 
                     const relay = await response.json();
                     if (!relay?.connected || !relay?.data) {
-                        resetDataOnDisconnected(onUpdate);
+                        markDisconnectedIfStale();
                         return;
                     }
 
@@ -127,16 +148,26 @@ export function useEtsTelemetry() {
                         return;
                     }
 
+                    lastRelaySuccessAt = Date.now();
                     processData(data, onUpdate);
                 } catch {
-                    resetDataOnDisconnected(onUpdate);
+                    // A brief LAN/Wi-Fi hiccup should not permanently wedge
+                    // relayPollInFlight or instantly blank the HUD. The abort
+                    // timeout guarantees this request settles and polling
+                    // continues automatically.
+                    markDisconnectedIfStale();
                 } finally {
+                    clearTimeout(timeout);
                     relayPollInFlight = false;
                 }
             };
 
+            lastRelaySuccessAt = 0;
             void pollRelay();
-            relayPollTimer = setInterval(pollRelay, 150);
+            relayPollTimer = setInterval(
+                pollRelay,
+                RELAY_POLL_INTERVAL_MS,
+            );
             return;
         }
 
@@ -183,6 +214,7 @@ export function useEtsTelemetry() {
             relayPollTimer = null;
         }
         relayPollInFlight = false;
+        lastRelaySuccessAt = 0;
 
         if (socket) {
             socket.onclose = null;
