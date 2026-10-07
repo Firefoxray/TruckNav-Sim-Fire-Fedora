@@ -14,7 +14,7 @@ The goal is to keep TruckNav easy to run on Linux, easy to update, and able to r
 - **Primary game:** American Truck Simulator through Steam + Proton
 - **ATS maps:** generated locally from installed game files
 - **Current ATS coverage:** South Dakota and the currently supported released DLC set
-- **ETS2:** Linux launcher + telemetry support is wired, with a fresh Europe map rebuild pipeline and a bundled-map fallback for first launch
+- **ETS2:** Linux launcher + telemetry support and a fresh Europe map rebuild pipeline are implemented; in-game verification is still newer than the ATS path
 - **Map mods:** not currently supported
 
 Fork versioning is tracked in [`VERSION`](VERSION).
@@ -29,7 +29,7 @@ Fork versioning is tracked in [`VERSION`](VERSION).
 - Live telemetry through the TruckNav server for local/LAN browsers
 - Shared TruckNav settings across browsers
 - Current ATS routing and visual map generation
-- South Dakota support
+- Current ATS map-DLC support through South Dakota
 - ATS / ETS2 launcher selector with the correct Steam/Proton telemetry prefix
 - Fresh ETS2 Europe routing/PMTiles rebuilds from installed game files
 - North-up follow mode that preserves manual rotation
