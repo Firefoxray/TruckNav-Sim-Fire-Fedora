@@ -6,7 +6,7 @@ TOOLS_ROOT="${TRUCKNAV_MAP_TOOLS_ROOT:-$REPO_ROOT/.tools/map-data}"
 MAPS_DIR="$TOOLS_ROOT/trucksim-maps"
 NODE_VERSION="${TRUCKNAV_MAP_NODE_VERSION:-24.13.0}"
 MAPS_REVISION="d56d0e3fb319230e84284f3029f8bda2c4b572a2"
-PATCH_SCRIPT="$REPO_ROOT/scripts/map-data/patch-trucksim-maps-south-dakota.py"
+PATCH_SCRIPT="$REPO_ROOT/scripts/map-data/patch-trucksim-maps.py"
 
 case "$(uname -m)" in
     x86_64) NODE_ARCH="x64" ;;
