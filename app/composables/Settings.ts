@@ -85,7 +85,7 @@ const DEFAULT_PROFILE: GameProfile = {
 };
 
 const DEFAULT_SETTINGS: AppSettingsState = {
-    selectedGame: null,
+    selectedGame: "ats",
     savedIP: null,
     profiles: {
         ets2: {
@@ -104,7 +104,7 @@ const DEFAULT_SETTINGS: AppSettingsState = {
     hudBtnSize: 30,
     truckMarkerSize: 40,
     compactTripFontSize: 1.8,
-    startOnMap: false,
+    startOnMap: true,
     activeUiComponents: [
         "speed",
         "speedLimit",
@@ -140,6 +140,9 @@ function mergeSettings(
     const merged: AppSettingsState = {
         ...defaults,
         ...source,
+        // Old configurations may still contain a null selection. Launch ATS
+        // by default without overriding an explicit ETS2 preference.
+        selectedGame: source.selectedGame === "ets2" ? "ets2" : "ats",
         profiles: {
             ets2: {
                 ...defaults.profiles.ets2,
