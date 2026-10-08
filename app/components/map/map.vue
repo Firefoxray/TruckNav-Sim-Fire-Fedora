@@ -16,6 +16,7 @@ defineProps<{ goHome: () => void }>();
 const mapEl = shallowRef<HTMLElement | null>(null);
 const map = shallowRef<maplibregl.Map | null>(null);
 const isSettingsPanelOpened = ref(false);
+const isLegendOpened = ref(false);
 const isClickingEnabled = ref(true);
 
 // UI STATE
@@ -279,6 +280,43 @@ watch(
     },
 );
 
+const MAP_LAYER_GROUPS: Record<
+    keyof typeof activeSettings.value.mapLayers,
+    string[]
+> = {
+    poiIcons: ["all-sprites"],
+    roadIcons: ["road-sprites"],
+    cityLabels: ["city-labels", "capital-major-labels", "village-labels"],
+    regionLabels: ["country-labels", "state-borders"],
+    facilityAreas: ["prefab-zones", "maparea-zones"],
+};
+
+function applyMapLayerVisibility() {
+    if (!map.value) return;
+
+    for (const [group, layerIds] of Object.entries(MAP_LAYER_GROUPS)) {
+        const visible =
+            activeSettings.value.mapLayers[
+                group as keyof typeof activeSettings.value.mapLayers
+            ];
+
+        for (const layerId of layerIds) {
+            if (!map.value.getLayer(layerId)) continue;
+            map.value.setLayoutProperty(
+                layerId,
+                "visibility",
+                visible ? "visible" : "none",
+            );
+        }
+    }
+}
+
+watch(
+    () => activeSettings.value.mapLayers,
+    () => applyMapLayerVisibility(),
+    { deep: true },
+);
+
 watch(
     () => activeSettings.value.fontFamily,
     (newFont) => {
@@ -358,6 +396,7 @@ onMounted(async () => {
 
             setupRouteLayer();
             initCameraListeners();
+            applyMapLayerVisibility();
         });
 
         map.value.on("click", async (e) => {
@@ -467,6 +506,11 @@ const onToggleFullscreen = async () => {
 
 const toggleSettingsPanel = () => {
     isSettingsPanelOpened.value = !isSettingsPanelOpened.value;
+    if (isSettingsPanelOpened.value) isLegendOpened.value = false;
+};
+
+const toggleLegend = () => {
+    isLegendOpened.value = !isLegendOpened.value;
 };
 
 const onCancelRoute = () => {
@@ -509,7 +553,22 @@ const onCancelRoute = () => {
                         <HudButton :onClick="toggleSettingsPanel">
                             <Icon name="lucide:settings" class="icon" />
                         </HudButton>
+
+                        <HudButton
+                            :is-active="isLegendOpened"
+                            :class="{ 'green-icon': isLegendOpened }"
+                            :onClick="toggleLegend"
+                            title="Map legend and layer visibility"
+                        >
+                            <Icon name="lucide:layers-3" class="icon" />
+                        </HudButton>
                     </div>
+
+                    <Transition name="panel-pop">
+                        <div v-if="isLegendOpened" class="map-legend-wrapper">
+                            <MapLegend />
+                        </div>
+                    </Transition>
 
                     <ManeuverCard
                         v-show="
