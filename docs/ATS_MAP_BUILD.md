@@ -102,6 +102,46 @@ cities, and state-name features. The legacy combined PMTiles file remains
 useful for static background geography such as water and state/country
 boundaries.
 
+## Actual game-derived elevation relief (optional)
+
+The normal ATS map build provides roads, service areas and city labels, but
+it does **not** generate hills or mountains. The Terrain map style therefore
+remains a simple green land palette until an optional elevation asset exists.
+
+The pinned `truckermudgeon/maps` toolkit can build colored elevation
+polygons from SCS game's parsed `usa-elevation.json` samples. No satellite
+imagery or real-world elevation data is overlaid, so game coordinates stay
+aligned with the TruckNav road graph.
+
+Once after an ATS parser/build:
+
+```bash
+cd ~/Projects/TruckNav-Sim-South-Dakota
+bash scripts/map-data/build-ats-elevation.sh
+```
+
+This may be CPU/RAM intensive. The script requires
+`build/map-data/ats-parser/usa-elevation.json` and the existing map-tool
+setup; if either is absent it stops and tells you what is missing. It
+builds and reprojects contour polygons into TruckNav's custom coordinate
+system, packages them as PMTiles, and installs only:
+
+```
+public/data/ats/map-data/tiles/terrain.mp3
+```
+
+Reload TruckNav and choose the **Terrain** style. Elevation colors follow
+the game-generated relief, and hide again when switching back to the
+TruckNav or Minimal styles. The usual updater does not generate terrain:
+it only updates source code. If this optional file is missing, the app
+falls back to its normal map without an error.
+
+The height polygons are *game-derived interpolations*, not a surveyed
+digital elevation model. They do not provide detailed hillshade,
+contour isolines, 3D mountains, local lake outlines, or accurate
+real-world coastlines. Those require a separate and validated terrain /
+hydrography data source and projection work.
+
 ## Validation
 
 The generated routing exporter performs binary-size and graph sanity checks.

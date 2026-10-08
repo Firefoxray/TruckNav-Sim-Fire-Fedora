@@ -26,7 +26,7 @@ export async function initializeMap(
     const protocol = new Protocol();
     maplibregl.addProtocol("pmtiles", protocol.tile);
 
-    async function loadPmtiles(fileName: string, key: string) {
+    async function loadPmtiles(fileName: string, key: string): Promise<boolean> {
         const folder = getActiveMapFolder(settings.value);
         const url = await getMapFileUrl(
             folder,
@@ -48,14 +48,25 @@ export async function initializeMap(
                     1024
                 ).toFixed(2)} MB)`,
             );
+            return true;
         } catch (error) {
-            console.error("Error loading PMTiles blob:", error);
+            if (fileName === "terrain") {
+                // Elevation is optional until the user builds terrain.mp3
+                // from their local ATS elevation samples.
+                console.info("Optional ATS elevation relief not installed.");
+            } else {
+                console.error("Error loading PMTiles blob:", error);
+            }
+            return false;
         }
     }
 
-    await Promise.all([
+    const [, , terrainAvailable] = await Promise.all([
         loadPmtiles("roads", "roads"),
         loadPmtiles("map-data-combined", "all-data"),
+        isFreshAtsBaseMap
+            ? loadPmtiles("terrain", "terrain")
+            : Promise.resolve(false),
     ]);
 
     let freshAtsBounds:
@@ -237,6 +248,73 @@ export async function initializeMap(
             type: "vector",
             url: "pmtiles://all-data",
         });
+
+        if (terrainAvailable) {
+            map.addSource("terrain-elevation", {
+                type: "vector",
+                url: "pmtiles://terrain",
+            });
+            // Game-derived filled elevation contours. Put relief below
+            // game roads, prefabs, POIs and labels, but above the base land
+            // background. Levels and palette follow the map toolkit's
+            // contour layer; no real-world terrain tiles are mixed in.
+            map.addLayer(
+                {
+                    id: "terrain-elevation",
+                    type: "fill",
+                    source: "terrain-elevation",
+                    "source-layer": "contours",
+                    layout: {
+                        "fill-sort-key": ["get", "elevation"],
+                        visibility:
+                            activeSettings.value.mapStyle === "terrain"
+                                ? "visible"
+                                : "none",
+                    },
+                    paint: {
+                        "fill-color": [
+                            "interpolate",
+                            ["linear"],
+                            ["get", "elevation"],
+                            -200, "#709567",
+                            0, "#709567",
+                            100, "#a1b968",
+                            150, "#c8c27f",
+                            200, "#c6b27e",
+                            250, "#b39e78",
+                            300, "#a18d73",
+                            400, "#918171",
+                            500, "#bdb9a8",
+                        ],
+                        "fill-opacity": 0.95,
+                    },
+                },
+                "lines",
+            );
+            // Fine elevation boundaries are useful at regional zoom but too
+            // noisy at a whole-country view.
+            map.addLayer(
+                {
+                    id: "terrain-elevation-lines",
+                    type: "line",
+                    source: "terrain-elevation",
+                    "source-layer": "contours",
+                    minzoom: 8,
+                    layout: {
+                        visibility:
+                            activeSettings.value.mapStyle === "terrain"
+                                ? "visible"
+                                : "none",
+                    },
+                    paint: {
+                        "line-color": "#515c47",
+                        "line-opacity": 0.3,
+                        "line-width": 0.6,
+                    },
+                },
+                "lines",
+            );
+        }
 
         // WATER
         map.addLayer({

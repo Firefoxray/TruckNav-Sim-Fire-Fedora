@@ -39,6 +39,15 @@ cp -a "$REF_ATS" "$DEST_ATS"
 
 # Replace dynamic roads/map features and routing with the fresh ATS 1.61 build.
 cp -f "$GEN_TILES/roads.mp3" "$DEST_ATS/map-data/tiles/roads.mp3"
+
+# Elevation tiles are optional. Use contours built for THIS parsed map if
+# available, never copy a potentially stale terrain layer from the reference.
+if [[ -s "$GEN_TILES/terrain.mp3" ]]; then
+    cp -f "$GEN_TILES/terrain.mp3" "$DEST_ATS/map-data/tiles/terrain.mp3"
+else
+    rm -f "$DEST_ATS/map-data/tiles/terrain.mp3"
+fi
+
 cp -f \
     "$GENERATED_ROOT/map-data/trucknav-visual-manifest.json" \
     "$DEST_ATS/map-data/trucknav-visual-manifest.json"
