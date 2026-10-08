@@ -3,13 +3,16 @@ import WebSocket from "ws";
 let socket: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let watchdogTimer: ReturnType<typeof setInterval> | null = null;
-let latestPacket: unknown = null;
+let latestPacket: any = null;
 let lastMessageAt = 0;
+let lastDataChangeAt = 0;
+let lastPacketSignature = "";
 let socketOpenedAt = 0;
 let started = false;
 
 const STALE_PACKET_MS = 5000;
 const STALE_SOCKET_MS = 10000;
+const STALE_DATA_MS = 12000;
 
 function scheduleReconnect() {
     if (reconnectTimer) return;
@@ -37,8 +40,25 @@ function connect() {
 
         socket.on("message", (message) => {
             try {
-                latestPacket = JSON.parse(message.toString());
-                lastMessageAt = Date.now();
+                const packet = JSON.parse(message.toString());
+                const now = Date.now();
+
+                const signature = [
+                    packet?.paused ? 1 : 0,
+                    packet?.common?.gameTime ?? "",
+                    packet?.truck?.current?.position?.x ?? "",
+                    packet?.truck?.current?.position?.z ?? "",
+                    packet?.truck?.current?.dashboard?.odometer ?? "",
+                    packet?.navigation?.distance ?? "",
+                ].join("|");
+
+                if (signature !== lastPacketSignature) {
+                    lastPacketSignature = signature;
+                    lastDataChangeAt = now;
+                }
+
+                latestPacket = packet;
+                lastMessageAt = now;
             } catch {
                 // Ignore malformed packets but keep the relay alive.
             }
@@ -67,14 +87,22 @@ export function startTelemetryRelay() {
     watchdogTimer = setInterval(() => {
         if (!started || !socket || socket.readyState !== WebSocket.OPEN) return;
 
+        const now = Date.now();
         const referenceTime = lastMessageAt || socketOpenedAt;
         if (!referenceTime) return;
 
-        if (Date.now() - referenceTime > STALE_SOCKET_MS) {
-            // A TCP/WebSocket can remain OPEN after the helper or network path
-            // has effectively stopped delivering data. Terminating the stale
-            // client forces the normal reconnect path instead of leaving
-            // remote browsers permanently offline.
+        const messageStale = now - referenceTime > STALE_SOCKET_MS;
+        const dataFrozen =
+            latestPacket &&
+            latestPacket.paused !== true &&
+            lastDataChangeAt > 0 &&
+            now - lastDataChangeAt > STALE_DATA_MS;
+
+        if (messageStale || dataFrozen) {
+            // A socket can stay OPEN while the helper stops delivering fresh
+            // game state, including repeatedly broadcasting one frozen packet.
+            // Force a reconnect so browsers do not keep displaying an old
+            // truck position as if it were live.
             socket.terminate();
         }
     }, 2000);
@@ -97,18 +125,28 @@ export function stopTelemetryRelay() {
     }
     latestPacket = null;
     lastMessageAt = 0;
+    lastDataChangeAt = 0;
+    lastPacketSignature = "";
     socketOpenedAt = 0;
 }
 
 export function getTelemetryRelayState() {
-    const ageMs = lastMessageAt ? Date.now() - lastMessageAt : null;
-    const fresh = ageMs !== null && ageMs < STALE_PACKET_MS;
+    const now = Date.now();
+    const ageMs = lastMessageAt ? now - lastMessageAt : null;
+    const dataAgeMs = lastDataChangeAt ? now - lastDataChangeAt : null;
+    const packetFresh = ageMs !== null && ageMs < STALE_PACKET_MS;
+    const dataFresh =
+        latestPacket?.paused === true ||
+        (dataAgeMs !== null && dataAgeMs < STALE_DATA_MS);
+    const fresh = packetFresh && dataFresh;
 
     return {
         connected: socket?.readyState === WebSocket.OPEN && fresh,
         helperSocketOpen: socket?.readyState === WebSocket.OPEN,
         lastMessageAt: lastMessageAt || null,
+        lastDataChangeAt: lastDataChangeAt || null,
         ageMs,
+        dataAgeMs,
         data: fresh ? latestPacket : null,
     };
 }
