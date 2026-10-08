@@ -1,7 +1,33 @@
 <script lang="ts" setup>
-import type { MapLayerVisibility } from "~/composables/Settings";
+import type { MapLayerVisibility, MapStyle } from "~/composables/Settings";
 
 const { activeSettings, updateProfile } = useSettings();
+
+const styleRows: Array<{
+    key: MapStyle;
+    label: string;
+    icon: string;
+    detail: string;
+}> = [
+    {
+        key: "trucknav",
+        label: "TruckNav",
+        icon: "lucide:map",
+        detail: "Current dark TruckNav map colors",
+    },
+    {
+        key: "terrain",
+        label: "Terrain",
+        icon: "lucide:mountain",
+        detail: "Natural land, water and road colors using game-map geometry",
+    },
+    {
+        key: "minimal",
+        label: "Minimal",
+        icon: "lucide:minus",
+        detail: "Muted map styling with less visual noise",
+    },
+];
 
 const layerRows: Array<{
     key: keyof MapLayerVisibility;
@@ -40,6 +66,10 @@ const layerRows: Array<{
         detail: "Depots, service areas and mapped facility shapes",
     },
 ];
+
+function setMapStyle(style: MapStyle) {
+    updateProfile("mapStyle", style);
+}
 
 function toggleLayer(key: keyof MapLayerVisibility) {
     updateProfile("mapLayers", {
@@ -81,6 +111,24 @@ function toggleLayer(key: keyof MapLayerVisibility) {
         </div>
 
         <div class="legend-divider"></div>
+
+        <div class="legend-section-title">Map style</div>
+        <div class="map-style-grid">
+            <button
+                v-for="row in styleRows"
+                :key="row.key"
+                class="map-style-option"
+                :class="{ active: activeSettings.mapStyle === row.key }"
+                @click.prevent="setMapStyle(row.key)"
+                :title="row.detail"
+            >
+                <Icon :name="row.icon" size="19" />
+                <span>{{ row.label }}</span>
+            </button>
+        </div>
+
+        <div class="legend-divider"></div>
+        <div class="legend-section-title">Map layers</div>
 
         <button
             v-for="row in layerRows"
