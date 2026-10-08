@@ -8,7 +8,7 @@ import {
 } from "~/assets/utils/shared/fileManager";
 
 const { selectedGame } = useGameSelection();
-const { updateProfile, activeSettings } = useSettings();
+const { settings, updateGlobal, updateProfile, activeSettings } = useSettings();
 const {
     isMobile,
     isElectron,
@@ -152,6 +152,30 @@ function toggleModPanel() {
 
             <div class="top-content">
                 <GameSelection v-model="selectedGame" :width="150" />
+
+                <div class="startup-option">
+                    <div class="startup-option-copy">
+                        <Icon name="lucide:map" size="20" />
+                        <div>
+                            <strong>Start directly on map</strong>
+                            <span>
+                                Skip this screen next time and open
+                                {{ selectedGame === "ets2" ? "ETS2" : "ATS" }}
+                                automatically.
+                            </span>
+                        </div>
+                    </div>
+
+                    <SegmentedControl
+                        left-option="On"
+                        right-option="Off"
+                        :active="settings.startOnMap"
+                        @connect="
+                            updateGlobal('startOnMap', !settings.startOnMap)
+                        "
+                        size="normal"
+                    />
+                </div>
                 <div
                     v-if="isBaseDownloaded && selectedGame"
                     class="top-buttons"
