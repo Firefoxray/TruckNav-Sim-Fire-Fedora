@@ -252,6 +252,10 @@ function applyMapStyle() {
 
     const style = activeSettings.value.mapStyle as MapStyle;
     const themeColor = activeSettings.value.themeColor;
+    const usesGeneratedAtsGeometry =
+        settings.value.selectedGame === "ats" &&
+        (!activeSettings.value.activeMod ||
+            activeSettings.value.activeMod === "none");
 
     const truckNavMapAreas: any = [
         "match",
@@ -332,11 +336,19 @@ function applyMapStyle() {
     const palette =
         style === "terrain"
             ? {
-                  background: "#263f52",
+                  // The generated ATS vector map contains roads, areas and
+                  // prefabs, but not a continuous land-cover polygon. Its
+                  // legacy water basemap can cover the entire game extent.
+                  // Paint the missing terrain as land and keep that legacy
+                  // water layer subtle instead of letting it tint everything
+                  // ocean blue. No real elevation data is implied here.
+                  background: "#718563",
                   water: "#315f79",
-                  country: "#59694b",
-                  countryOpacity: 0.72,
+                  waterOpacity: usesGeneratedAtsGeometry ? 0.14 : 1,
+                  country: "#677b55",
+                  countryOpacity: usesGeneratedAtsGeometry ? 0.28 : 0.72,
                   waterOutline: "#7d9dab",
+                  waterOutlineOpacity: usesGeneratedAtsGeometry ? 0.18 : 0.7,
                   road: "#d0c39a",
                   roadOpacity: 0.96,
                   baseLine: "#718066",
@@ -356,6 +368,8 @@ function applyMapStyle() {
                         0.12,
                     ),
                     water: darkenColor(activeSettings.value.landColor, 0.08),
+                    waterOpacity: 1,
+                    waterOutlineOpacity: 0.7,
                     country: darkenColor(activeSettings.value.landColor, 0.28),
                     countryOpacity: 0.32,
                     waterOutline: darkenColor(
@@ -380,6 +394,8 @@ function applyMapStyle() {
               : {
                     background: activeSettings.value.backgroundColor,
                     water: activeSettings.value.landColor,
+                    waterOpacity: 1,
+                    waterOutlineOpacity: 0.7,
                     country: darkenColor(activeSettings.value.landColor, 0.4),
                     countryOpacity: 0.4,
                     waterOutline: darkenColor(
@@ -406,9 +422,11 @@ function applyMapStyle() {
 
     setPaint("background", "background-color", palette.background);
     setPaint("water", "fill-color", palette.water);
+    setPaint("water", "fill-opacity", palette.waterOpacity);
     setPaint("country-borders", "fill-color", palette.country);
     setPaint("country-borders", "fill-opacity", palette.countryOpacity);
     setPaint("water-outline", "line-color", palette.waterOutline);
+    setPaint("water-outline", "line-opacity", palette.waterOutlineOpacity);
     setPaint("lines", "line-color", palette.baseLine);
     setPaint("roads", "line-color", palette.road);
     setPaint("roads", "line-opacity", palette.roadOpacity);
