@@ -32,7 +32,9 @@ Fork versioning is tracked in [`VERSION`](VERSION).
 - Current ATS map-DLC support through South Dakota
 - ATS / ETS2 launcher selector with the correct Steam/Proton telemetry prefix
 - Fresh ETS2 Europe routing/PMTiles rebuilds from installed game files
-- North-up follow mode that preserves manual rotation
+- North-up / heading-up map orientation with a live compass
+- Interactive map legend with persistent POI/label/facility visibility controls
+- Optional direct-to-map startup for a remembered ATS/ETS2 selection
 - Intermediate route stops with distance + ETA alongside total trip stats
 
 ## Fedora setup
