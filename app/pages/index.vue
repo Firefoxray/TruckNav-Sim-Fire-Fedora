@@ -1,17 +1,29 @@
 <script lang="ts" setup>
 import { SafeArea, SystemBarsType } from "@capacitor-community/safe-area";
+import { isMapDownloaded } from "~/assets/utils/shared/fileManager";
 
 const { isElectron, isMobile } = usePlatform();
-const { settings } = useSettings();
+const { settings, initSettings } = useSettings();
 
 const currentView = ref<string>("");
 
-onMounted(() => {
+onMounted(async () => {
+    await initSettings();
+
     setTimeout(updateSystemBars, 500);
     window.addEventListener("resize", updateSystemBars);
 
     if (isElectron.value) {
         currentView.value = "desktopHome";
+        return;
+    }
+
+    if (
+        settings.value.startOnMap &&
+        settings.value.selectedGame &&
+        (await isMapDownloaded(settings.value.selectedGame))
+    ) {
+        currentView.value = "map";
     } else {
         currentView.value = "gameManager";
     }
