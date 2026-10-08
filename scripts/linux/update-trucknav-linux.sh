@@ -17,7 +17,13 @@ require_cmd npm
 if ! git diff --quiet -- \
   . \
   ':(exclude)public/data/ats/**' \
-  ':(exclude)public/sprites/ats/**'
+  ':(exclude)public/sprites/ats/**' \
+  ':(exclude)public/sprites/ets2/**' || \
+  ! git diff --cached --quiet -- \
+  . \
+  ':(exclude)public/data/ats/**' \
+  ':(exclude)public/sprites/ats/**' \
+  ':(exclude)public/sprites/ets2/**'
 then
   echo "Refusing to update because tracked source files have local changes." >&2
   echo "Commit, stash, or discard those source changes first." >&2
@@ -63,8 +69,43 @@ fi
 
 changed_files="$(git diff --name-only "$old_head" "$target_head")"
 
+previous_stash="$(git rev-parse -q --verify refs/stash || true)"
+
+git stash push -m "TruckNav automatic sprite backup" -- \
+  public/sprites/ats public/sprites/ets2
+
+sprite_stash="$(git rev-parse -q --verify refs/stash || true)"
+if [[ "$sprite_stash" == "$previous_stash" ]]; then
+  sprite_stash=""
+fi
+
+restore_sprite_stash() {
+  [[ -n "$sprite_stash" ]] || return 0
+
+  if [[ "$(git rev-parse -q --verify refs/stash || true)" != "$sprite_stash" ]]; then
+    echo "Stash order changed; sprite backup retained." >&2
+    return 7
+  fi
+
+  echo "Restoring local sprite files..."
+  if ! git stash pop --index 'stash@{0}'; then
+    echo "Sprite restore failed; backup retained in Git stash." >&2
+    return 7
+  fi
+
+  sprite_stash=""
+}
+
+trap 'restore_sprite_stash' EXIT
+
 echo "Fast-forwarding to ${target_head:0:10}..."
 git merge --ff-only "$target_head"
+
+if ! restore_sprite_stash; then
+  trap - EXIT
+  exit 7
+fi
+trap - EXIT
 
 if grep -Eq '^(package.json|package-lock.json)$' <<<"$changed_files"; then
   echo
