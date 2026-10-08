@@ -7,12 +7,15 @@ let latestPacket: any = null;
 let lastMessageAt = 0;
 let lastDataChangeAt = 0;
 let lastPacketSignature = "";
+let lastMotionChangeAt = 0;
+let lastMotionSignature = "";
 let socketOpenedAt = 0;
 let started = false;
 
 const STALE_PACKET_MS = 5000;
 const STALE_SOCKET_MS = 10000;
 const STALE_DATA_MS = 12000;
+const STALE_MOVING_POSITION_MS = 5000;
 
 function scheduleReconnect() {
     if (reconnectTimer) return;
@@ -57,6 +60,18 @@ function connect() {
                     lastDataChangeAt = now;
                 }
 
+                const motionSignature = [
+                    packet?.truck?.current?.position?.x ?? "",
+                    packet?.truck?.current?.position?.z ?? "",
+                    packet?.truck?.current?.dashboard?.odometer ?? "",
+                    packet?.navigation?.distance ?? "",
+                ].join("|");
+
+                if (motionSignature !== lastMotionSignature) {
+                    lastMotionSignature = motionSignature;
+                    lastMotionChangeAt = now;
+                }
+
                 latestPacket = packet;
                 lastMessageAt = now;
             } catch {
@@ -92,13 +107,21 @@ export function startTelemetryRelay() {
         if (!referenceTime) return;
 
         const messageStale = now - referenceTime > STALE_SOCKET_MS;
+        const speedKph =
+            Number(latestPacket?.truck?.current?.dashboard?.speedKph) || 0;
         const dataFrozen =
             latestPacket &&
             latestPacket.paused !== true &&
             lastDataChangeAt > 0 &&
             now - lastDataChangeAt > STALE_DATA_MS;
+        const movingPositionFrozen =
+            latestPacket &&
+            latestPacket.paused !== true &&
+            speedKph > 5 &&
+            lastMotionChangeAt > 0 &&
+            now - lastMotionChangeAt > STALE_MOVING_POSITION_MS;
 
-        if (messageStale || dataFrozen) {
+        if (messageStale || dataFrozen || movingPositionFrozen) {
             // A socket can stay OPEN while the helper stops delivering fresh
             // game state, including repeatedly broadcasting one frozen packet.
             // Force a reconnect so browsers do not keep displaying an old
@@ -127,6 +150,8 @@ export function stopTelemetryRelay() {
     lastMessageAt = 0;
     lastDataChangeAt = 0;
     lastPacketSignature = "";
+    lastMotionChangeAt = 0;
+    lastMotionSignature = "";
     socketOpenedAt = 0;
 }
 
@@ -134,11 +159,19 @@ export function getTelemetryRelayState() {
     const now = Date.now();
     const ageMs = lastMessageAt ? now - lastMessageAt : null;
     const dataAgeMs = lastDataChangeAt ? now - lastDataChangeAt : null;
+    const motionAgeMs = lastMotionChangeAt ? now - lastMotionChangeAt : null;
     const packetFresh = ageMs !== null && ageMs < STALE_PACKET_MS;
+    const speedKph =
+        Number(latestPacket?.truck?.current?.dashboard?.speedKph) || 0;
     const dataFresh =
         latestPacket?.paused === true ||
         (dataAgeMs !== null && dataAgeMs < STALE_DATA_MS);
-    const fresh = packetFresh && dataFresh;
+    const motionFresh =
+        latestPacket?.paused === true ||
+        speedKph <= 5 ||
+        (motionAgeMs !== null &&
+            motionAgeMs < STALE_MOVING_POSITION_MS);
+    const fresh = packetFresh && dataFresh && motionFresh;
 
     return {
         connected: socket?.readyState === WebSocket.OPEN && fresh,
@@ -147,6 +180,7 @@ export function getTelemetryRelayState() {
         lastDataChangeAt: lastDataChangeAt || null,
         ageMs,
         dataAgeMs,
+        motionAgeMs,
         data: fresh ? latestPacket : null,
     };
 }
