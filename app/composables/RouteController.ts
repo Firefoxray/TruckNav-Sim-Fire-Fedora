@@ -993,11 +993,36 @@ export const useRouteController = (
         lastMathPos.value = truckCoords;
 
         const path = currentRoutePath.value;
-        let bestIndex = currentRouteIndex.value;
+        const previousIndex = Math.min(
+            currentRouteIndex.value,
+            path.length - 2,
+        );
+        let bestIndex = previousIndex;
         let minSqDist = Infinity;
 
-        const searchLimit = Math.min(path.length - 1, bestIndex + 500);
-        const startSearch = Math.max(0, bestIndex - 5);
+        // Keep route progress continuous. The old +500-point nearest-segment
+        // search could snap to a much later piece of a route where roads cross
+        // or run close together, instantly turning an hour of driving into a
+        // few minutes. Search a route-distance window instead.
+        const currentProgressKm = cache[previousIndex * 2] ?? 0;
+
+        let startSearch = previousIndex;
+        while (
+            startSearch > 0 &&
+            currentProgressKm - (cache[startSearch * 2] ?? 0) < 0.75
+        ) {
+            startSearch--;
+        }
+
+        let searchLimit = previousIndex + 1;
+        while (
+            searchLimit < path.length - 1 &&
+            (cache[searchLimit * 2] ?? currentProgressKm) -
+                currentProgressKm <
+                6
+        ) {
+            searchLimit++;
+        }
 
         for (let i = startSearch; i < searchLimit; i++) {
             const distSq = getSqDistToSegment(
@@ -1010,6 +1035,32 @@ export const useRouteController = (
                 minSqDist = distSq;
                 bestIndex = i;
             }
+        }
+
+        // If telemetry resumes somewhere well outside the continuity window,
+        // recalculate from the real truck position instead of snapping route
+        // progress to an unrelated nearby segment.
+        const continuityThresholdSq =
+            isTruckInYard.value || isYardStart.value ? 0.0002 : 0.00003;
+        const now = Date.now();
+
+        if (
+            minSqDist > continuityThresholdSq &&
+            now - lastRecalcTime.value >= 2500 &&
+            !isCalculating.value &&
+            waypointList.value.length > 0
+        ) {
+            lastRecalcTime.value = now;
+            console.log(
+                "Route position lost or telemetry jumped; recalculating from current truck position...",
+            );
+            void handleMultiRouteCalculation(
+                truckCoords,
+                truckHeading,
+                sdkScale,
+                avgSpeed,
+            );
+            return;
         }
 
         currentRouteIndex.value = bestIndex;
@@ -1074,7 +1125,6 @@ export const useRouteController = (
             nextTurnDistance.value = 0;
         }
 
-        const now = Date.now();
         if (now - lastRecalcTime.value < 5000) return;
 
         if (isTruckInYard.value) {
