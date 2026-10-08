@@ -12,6 +12,14 @@ export type UiComponent =
 export type ActiveComponents = UiComponent[];
 export type LocaleCode = "en" | "de" | "nl" | "cs" | "sk" | "ko" | "ro";
 
+export interface MapLayerVisibility {
+    poiIcons: boolean;
+    roadIcons: boolean;
+    cityLabels: boolean;
+    regionLabels: boolean;
+    facilityAreas: boolean;
+}
+
 export interface GameProfile {
     themeColor: string;
     textColor: TextTheme;
@@ -25,6 +33,7 @@ export interface GameProfile {
     hasTurnNavigation: boolean;
     fontFamily: string;
     activeMod: string | "none";
+    mapLayers: MapLayerVisibility;
 }
 
 export interface AppSettingsState {
@@ -37,6 +46,7 @@ export interface AppSettingsState {
     hudBtnSize: number;
     truckMarkerSize: number;
     compactTripFontSize: number;
+    startOnMap: boolean;
     activeUiComponents: ActiveComponents;
     locale: LocaleCode;
 }
@@ -46,6 +56,14 @@ interface SharedSettingsResponse {
     updatedAt?: string;
     settings: Partial<AppSettingsState> | null;
 }
+
+const DEFAULT_MAP_LAYERS: MapLayerVisibility = {
+    poiIcons: true,
+    roadIcons: true,
+    cityLabels: true,
+    regionLabels: true,
+    facilityAreas: true,
+};
 
 const DEFAULT_PROFILE: GameProfile = {
     themeColor: "#fbc02d",
@@ -60,6 +78,7 @@ const DEFAULT_PROFILE: GameProfile = {
     hasTurnNavigation: true,
     fontFamily: "Commissioner",
     activeMod: "none",
+    mapLayers: { ...DEFAULT_MAP_LAYERS },
 };
 
 const DEFAULT_SETTINGS: AppSettingsState = {
@@ -82,6 +101,7 @@ const DEFAULT_SETTINGS: AppSettingsState = {
     hudBtnSize: 30,
     truckMarkerSize: 40,
     compactTripFontSize: 1.8,
+    startOnMap: false,
     activeUiComponents: [
         "speed",
         "speedLimit",
@@ -101,6 +121,7 @@ let sharedRevision = 0;
 let sharedSaveTimer: ReturnType<typeof setTimeout> | null = null;
 let sharedPollTimer: ReturnType<typeof setInterval> | null = null;
 let applyingSharedSettings = false;
+let initPromise: Promise<void> | null = null;
 
 function cloneDefaults(): AppSettingsState {
     return JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
@@ -120,10 +141,18 @@ function mergeSettings(
             ets2: {
                 ...defaults.profiles.ets2,
                 ...(source.profiles?.ets2 || {}),
+                mapLayers: {
+                    ...defaults.profiles.ets2.mapLayers,
+                    ...(source.profiles?.ets2?.mapLayers || {}),
+                },
             },
             ats: {
                 ...defaults.profiles.ats,
                 ...(source.profiles?.ats || {}),
+                mapLayers: {
+                    ...defaults.profiles.ats.mapLayers,
+                    ...(source.profiles?.ats?.mapLayers || {}),
+                },
             },
         },
     };
@@ -313,47 +342,58 @@ export const useSettings = () => {
     };
 
     const initSettings = async () => {
-        let localSettings: Partial<AppSettingsState> | null = null;
+        if (initPromise) return initPromise;
 
-        if (typeof localStorage !== "undefined") {
-            const savedString = localStorage.getItem(STORAGE_KEY);
+        initPromise = (async () => {
+            let localSettings: Partial<AppSettingsState> | null = null;
 
-            if (savedString) {
-                try {
-                    localSettings = JSON.parse(savedString);
-                } catch (error) {
-                    console.error(
-                        "Corrupt local settings found, resetting to defaults.",
-                        error,
-                    );
+            if (typeof localStorage !== "undefined") {
+                const savedString = localStorage.getItem(STORAGE_KEY);
+
+                if (savedString) {
+                    try {
+                        localSettings = JSON.parse(savedString);
+                    } catch (error) {
+                        console.error(
+                            "Corrupt local settings found, resetting to defaults.",
+                            error,
+                        );
+                    }
                 }
             }
-        }
 
-        settings.value = mergeSettings(localSettings);
-        applySideEffects();
+            settings.value = mergeSettings(localSettings);
+            applySideEffects();
 
-        if (canUseSharedWebSettings()) {
-            const shared = await fetchSharedSettings();
+            if (canUseSharedWebSettings()) {
+                const shared = await fetchSharedSettings();
 
-            if (shared?.settings) {
-                sharedRevision = shared.revision || 0;
-                applyingSharedSettings = true;
-                try {
-                    settings.value = mergeSettings(
-                        shared.settings,
-                        settings.value,
-                    );
-                    saveLocalSettings();
-                    applySideEffects();
-                } finally {
-                    applyingSharedSettings = false;
+                if (shared?.settings) {
+                    sharedRevision = shared.revision || 0;
+                    applyingSharedSettings = true;
+                    try {
+                        settings.value = mergeSettings(
+                            shared.settings,
+                            settings.value,
+                        );
+                        saveLocalSettings();
+                        applySideEffects();
+                    } finally {
+                        applyingSharedSettings = false;
+                    }
+                } else {
+                    await persistSharedSettings();
                 }
-            } else {
-                await persistSharedSettings();
-            }
 
-            startSharedSettingsSync();
+                startSharedSettingsSync();
+            }
+        })();
+
+        try {
+            await initPromise;
+        } catch (error) {
+            initPromise = null;
+            throw error;
         }
     };
 
@@ -386,6 +426,7 @@ export const useSettings = () => {
         settings.value.truckMarkerSize = DEFAULT_SETTINGS.truckMarkerSize;
         settings.value.compactTripFontSize =
             DEFAULT_SETTINGS.compactTripFontSize;
+        settings.value.startOnMap = DEFAULT_SETTINGS.startOnMap;
 
         settings.value.activeUiComponents = [
             ...DEFAULT_SETTINGS.activeUiComponents,
