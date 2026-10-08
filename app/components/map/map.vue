@@ -504,17 +504,16 @@ watch(routeFound, (newVal) => {
     }
 });
 
+// Initial truck positioning may lock the camera once. Reconnecting must not
+// steal manual panning/zooming unless auto-follow was explicitly enabled.
+let hasInitializedCameraFollow = false;
 watch([loading, gameConnected], ([isLoading, isGameConnected]) => {
-    if (!isLoading) {
-        setTimeout(() => {
-            isCameraLocked.value = true;
-        }, 100);
-
-        if (isGameConnected) {
-            setTimeout(() => {
-                isCameraLocked.value = true;
-            }, 500);
-        }
+    if (isLoading || !isGameConnected) return;
+    if (!hasInitializedCameraFollow) {
+        hasInitializedCameraFollow = true;
+        isCameraLocked.value = true;
+    } else if (isAutoFollowEnabled.value) {
+        isCameraLocked.value = true;
     }
 });
 
