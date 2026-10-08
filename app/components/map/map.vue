@@ -422,12 +422,17 @@ function applyMapStyle() {
 
     // Real relief is optional; it becomes visible only after the terrain
     // PMTiles have been generated from parsed ATS elevation samples.
-    if (map.value.getLayer("terrain-elevation")) {
-        map.value.setLayoutProperty(
-            "terrain-elevation",
-            "visibility",
-            style === "terrain" ? "visible" : "none",
-        );
+    for (const terrainLayer of [
+        "terrain-elevation",
+        "terrain-elevation-lines",
+    ]) {
+        if (map.value.getLayer(terrainLayer)) {
+            map.value.setLayoutProperty(
+                terrainLayer,
+                "visibility",
+                style === "terrain" ? "visible" : "none",
+            );
+        }
     }
 
     setPaint("background", "background-color", palette.background);
