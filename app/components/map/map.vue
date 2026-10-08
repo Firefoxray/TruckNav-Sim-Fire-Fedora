@@ -9,6 +9,7 @@ import {
     lightenColor,
 } from "~/assets/utils/shared/colors";
 import { generateTruckIcon } from "~/assets/utils/map/markers";
+import type { MapLayerVisibility } from "~/composables/Settings";
 
 defineProps<{ goHome: () => void }>();
 
@@ -280,10 +281,7 @@ watch(
     },
 );
 
-const MAP_LAYER_GROUPS: Record<
-    keyof typeof activeSettings.value.mapLayers,
-    string[]
-> = {
+const MAP_LAYER_GROUPS: Record<keyof MapLayerVisibility, string[]> = {
     poiIcons: ["all-sprites"],
     roadIcons: ["road-sprites"],
     cityLabels: ["city-labels", "capital-major-labels", "village-labels"],
@@ -297,7 +295,7 @@ function applyMapLayerVisibility() {
     for (const [group, layerIds] of Object.entries(MAP_LAYER_GROUPS)) {
         const visible =
             activeSettings.value.mapLayers[
-                group as keyof typeof activeSettings.value.mapLayers
+                group as keyof MapLayerVisibility
             ];
 
         for (const layerId of layerIds) {
