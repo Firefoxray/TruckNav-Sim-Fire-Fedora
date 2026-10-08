@@ -83,8 +83,13 @@ previous_stash="$(git rev-parse -q --verify refs/stash || true)"
 
 # The generated ATS map can contain tracked local edits too. Save those
 # alongside the two sprite atlases. Untracked map assets are left in place.
-git stash push -m "TruckNav automatic generated map backup" -- \
-  public/data/ats public/sprites/ats public/sprites/ets2
+# A pathspec that only contains untracked files causes git stash to fail, so
+# include the ATS data folder only when Git already tracks something there.
+stash_paths=(public/sprites/ats public/sprites/ets2)
+if [[ -n "$(git ls-files -- public/data/ats)" ]]; then
+  stash_paths+=(public/data/ats)
+fi
+git stash push -m "TruckNav automatic generated map backup" -- "${stash_paths[@]}"
 
 sprite_stash="$(git rev-parse -q --verify refs/stash || true)"
 if [[ "$sprite_stash" == "$previous_stash" ]]; then
