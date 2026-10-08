@@ -61,6 +61,9 @@ export async function initializeMap(
     let freshAtsBounds:
         | [[number, number], [number, number]]
         | null = null;
+    let freshAtsPanBounds:
+        | [[number, number], [number, number]]
+        | null = null;
 
     if (isFreshAtsBaseMap) {
         try {
@@ -87,9 +90,20 @@ export async function initializeMap(
                         [bounds.minX - padX, bounds.minY - padY],
                         [bounds.maxX + padX, bounds.maxY + padY],
                     ];
+                    // Keep the initial overview snug, but let users pan past
+                    // the mapped roads. Previously maxBounds equaled the
+                    // fitted bounds, so zoomed-out dragging felt locked.
+                    const roamPadX = width * 0.45;
+                    const roamPadY = height * 0.45;
+                    freshAtsPanBounds = [
+                        [bounds.minX - roamPadX, bounds.minY - roamPadY],
+                        [bounds.maxX + roamPadX, bounds.maxY + roamPadY],
+                    ];
                     console.log(
-                        "Using generated ATS visual bounds:",
+                        "Using generated ATS initial bounds:",
                         freshAtsBounds,
+                        "pan bounds:",
+                        freshAtsPanBounds,
                     );
                 }
             }
@@ -181,7 +195,7 @@ export async function initializeMap(
                 ? {
                       bounds: freshAtsBounds,
                       fitBoundsOptions: { padding: 40 },
-                      maxBounds: freshAtsBounds,
+                      maxBounds: freshAtsPanBounds!,
                   }
                 : {
                       center: [0, 0],
