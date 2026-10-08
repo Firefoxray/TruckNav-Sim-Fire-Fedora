@@ -2,8 +2,13 @@
 import { ets2Expansions } from "~/data/ets2/ets2Expansions";
 import { atsExpansions } from "~/data/ats/atsExpansions";
 
-const { settings, activeSettings, updateProfile, resetSettings } =
-    useSettings();
+const {
+    settings,
+    activeSettings,
+    updateGlobal,
+    updateProfile,
+    resetSettings,
+} = useSettings();
 const { locale, setLocale, t } = useTranslations();
 const {
     settings: desktopSettings,
@@ -71,6 +76,21 @@ onMounted(async () => {
                     {{ t("common.active") }}
                 </button>
             </div>
+        </div>
+
+        <div class="option setting">
+            <div class="option-title">
+                <Icon name="lucide:map" size="24" />
+                <p>Start directly on map</p>
+            </div>
+
+            <SegmentedControl
+                left-option="On"
+                right-option="Off"
+                @connect="updateGlobal('startOnMap', !settings.startOnMap)"
+                size="normal"
+                :active="settings.startOnMap"
+            />
         </div>
 
         <div class="option setting">
