@@ -17,11 +17,13 @@ require_cmd npm
 if ! git diff --quiet -- \
   . \
   ':(exclude)public/data/ats/**' \
+  ':(exclude)public/data/ets2/**' \
   ':(exclude)public/sprites/ats/**' \
   ':(exclude)public/sprites/ets2/**' || \
   ! git diff --cached --quiet -- \
   . \
   ':(exclude)public/data/ats/**' \
+  ':(exclude)public/data/ets2/**' \
   ':(exclude)public/sprites/ats/**' \
   ':(exclude)public/sprites/ets2/**'
 then
@@ -81,14 +83,16 @@ done < <(git ls-files --others --exclude-standard)
 
 previous_stash="$(git rev-parse -q --verify refs/stash || true)"
 
-# The generated ATS map can contain tracked local edits too. Save those
+# Generated map files can contain tracked local edits too. Save those
 # alongside the two sprite atlases. Untracked map assets are left in place.
 # A pathspec that only contains untracked files causes git stash to fail, so
-# include the ATS data folder only when Git already tracks something there.
+# include a game data folder only when Git already tracks something there.
 stash_paths=(public/sprites/ats public/sprites/ets2)
-if [[ -n "$(git ls-files -- public/data/ats)" ]]; then
-  stash_paths+=(public/data/ats)
-fi
+for game in ats ets2; do
+  if [[ -n "$(git ls-files -- "public/data/$game")" ]]; then
+    stash_paths+=("public/data/$game")
+  fi
+done
 git stash push -m "TruckNav automatic generated map backup" -- "${stash_paths[@]}"
 
 sprite_stash="$(git rev-parse -q --verify refs/stash || true)"
