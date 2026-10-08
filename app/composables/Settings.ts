@@ -2,6 +2,7 @@ import type { GameType } from "~/types";
 
 export type UnitSystem = "metric" | "imperial";
 export type TextTheme = "light" | "dark";
+export type MapStyle = "trucknav" | "terrain" | "minimal";
 export type UiComponent =
     | "speed"
     | "fuel"
@@ -34,6 +35,7 @@ export interface GameProfile {
     fontFamily: string;
     activeMod: string | "none";
     mapLayers: MapLayerVisibility;
+    mapStyle: MapStyle;
 }
 
 export interface AppSettingsState {
@@ -79,6 +81,7 @@ const DEFAULT_PROFILE: GameProfile = {
     fontFamily: "Commissioner",
     activeMod: "none",
     mapLayers: { ...DEFAULT_MAP_LAYERS },
+    mapStyle: "trucknav",
 };
 
 const DEFAULT_SETTINGS: AppSettingsState = {
