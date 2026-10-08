@@ -53,6 +53,10 @@ let socket: WebSocket | null = null;
 let relayPollTimer: ReturnType<typeof setInterval> | null = null;
 let relayPollInFlight = false;
 let lastRelaySuccessAt = 0;
+let relayRequestController: AbortController | null = null;
+let socketReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+// Invalidates responses and reconnect callbacks from previous map sessions.
+let telemetryGeneration = 0;
 
 const RELAY_POLL_INTERVAL_MS = 150;
 const RELAY_REQUEST_TIMEOUT_MS = 2500;
@@ -102,8 +106,10 @@ export function useEtsTelemetry() {
 
         if (canUseServerRelay) {
             if (relayPollTimer) return;
+            const generation = ++telemetryGeneration;
 
             const markDisconnectedIfStale = () => {
+                if (generation !== telemetryGeneration) return;
                 if (
                     lastRelaySuccessAt === 0 ||
                     Date.now() - lastRelaySuccessAt >= RELAY_DISCONNECT_GRACE_MS
@@ -113,10 +119,11 @@ export function useEtsTelemetry() {
             };
 
             const pollRelay = async () => {
-                if (relayPollInFlight) return;
+                if (relayPollInFlight || generation !== telemetryGeneration) return;
                 relayPollInFlight = true;
 
                 const controller = new AbortController();
+                relayRequestController = controller;
                 const timeout = setTimeout(
                     () => controller.abort(),
                     RELAY_REQUEST_TIMEOUT_MS,
@@ -127,6 +134,7 @@ export function useEtsTelemetry() {
                         cache: "no-store",
                         signal: controller.signal,
                     });
+                    if (generation !== telemetryGeneration) return;
 
                     if (!response.ok) {
                         markDisconnectedIfStale();
@@ -134,6 +142,7 @@ export function useEtsTelemetry() {
                     }
 
                     const relay = await response.json();
+                    if (generation !== telemetryGeneration) return;
                     if (!relay?.connected || !relay?.data) {
                         markDisconnectedIfStale();
                         return;
@@ -158,7 +167,12 @@ export function useEtsTelemetry() {
                     markDisconnectedIfStale();
                 } finally {
                     clearTimeout(timeout);
-                    relayPollInFlight = false;
+                    if (relayRequestController === controller) {
+                        relayRequestController = null;
+                    }
+                    if (generation === telemetryGeneration) {
+                        relayPollInFlight = false;
+                    }
                 }
             };
 
@@ -172,6 +186,11 @@ export function useEtsTelemetry() {
         }
 
         if (socket) return;
+        const generation = ++telemetryGeneration;
+        if (socketReconnectTimer) {
+            clearTimeout(socketReconnectTimer);
+            socketReconnectTimer = null;
+        }
 
         const ip = settings.value.savedIP || window.location.hostname;
         const url = `ws://${ip}:30001`;
@@ -179,10 +198,12 @@ export function useEtsTelemetry() {
         socket = new WebSocket(url);
 
         socket.onopen = () => {
+            if (generation !== telemetryGeneration) return;
             console.log("Connected to Bridge");
         };
 
         socket.onmessage = (event) => {
+            if (generation !== telemetryGeneration) return;
             try {
                 const rawData = JSON.parse(event.data);
 
@@ -202,13 +223,26 @@ export function useEtsTelemetry() {
         };
 
         socket.onclose = () => {
+            if (generation !== telemetryGeneration) return;
             socket = null;
             resetDataOnDisconnected(onUpdate);
-            setTimeout(() => startTelemetry(onUpdate), 3000);
+            socketReconnectTimer = setTimeout(() => {
+                socketReconnectTimer = null;
+                if (generation === telemetryGeneration) startTelemetry(onUpdate);
+            }, 3000);
         };
     }
 
     function stopTelemetry() {
+        telemetryGeneration++;
+        if (socketReconnectTimer) {
+            clearTimeout(socketReconnectTimer);
+            socketReconnectTimer = null;
+        }
+        if (relayRequestController) {
+            relayRequestController.abort();
+            relayRequestController = null;
+        }
         if (relayPollTimer) {
             clearInterval(relayPollTimer);
             relayPollTimer = null;
@@ -221,6 +255,7 @@ export function useEtsTelemetry() {
             socket.close();
             socket = null;
         }
+        resetDataOnDisconnected();
     }
 
     function processData(

@@ -199,6 +199,18 @@ async function refreshJob() {
 
 async function startAction(action: "update-app" | "rebuild-map") {
     if (
+        action === "update-app" &&
+        !window.confirm(
+            "Check for a TruckNav update? If an update is found, the web dashboard " +
+                "and telemetry helper will shut down and stay off until you " +
+                "start TruckNav again. ATS/ETS2 will keep running. " +
+                "This browser page may disconnect during installation.",
+        )
+    ) {
+        return;
+    }
+
+    if (
         action === "rebuild-map" &&
         !window.confirm(
             "Rebuild the " +

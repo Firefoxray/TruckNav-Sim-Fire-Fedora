@@ -17,11 +17,13 @@ require_cmd npm
 if ! git diff --quiet -- \
   . \
   ':(exclude)public/data/ats/**' \
+  ':(exclude)public/data/ets2/**' \
   ':(exclude)public/sprites/ats/**' \
   ':(exclude)public/sprites/ets2/**' || \
   ! git diff --cached --quiet -- \
   . \
   ':(exclude)public/data/ats/**' \
+  ':(exclude)public/data/ets2/**' \
   ':(exclude)public/sprites/ats/**' \
   ':(exclude)public/sprites/ets2/**'
 then
@@ -69,10 +71,29 @@ fi
 
 changed_files="$(git diff --name-only "$old_head" "$target_head")"
 
+# Never overwrite generated files that exist locally but are not tracked yet.
+# Git normally refuses these merges too, but catch them before stashing anything.
+while IFS= read -r untracked_file; do
+  if grep -Fxq -- "$untracked_file" <<<"$changed_files"; then
+    echo "Update would overwrite untracked local file: $untracked_file" >&2
+    echo "Move or back up that file manually before updating." >&2
+    exit 6
+  fi
+done < <(git ls-files --others --exclude-standard)
+
 previous_stash="$(git rev-parse -q --verify refs/stash || true)"
 
-git stash push -m "TruckNav automatic sprite backup" -- \
-  public/sprites/ats public/sprites/ets2
+# Generated map files can contain tracked local edits too. Save those
+# alongside the two sprite atlases. Untracked map assets are left in place.
+# A pathspec that only contains untracked files causes git stash to fail, so
+# include a game data folder only when Git already tracks something there.
+stash_paths=(public/sprites/ats public/sprites/ets2)
+for game in ats ets2; do
+  if [[ -n "$(git ls-files -- "public/data/$game")" ]]; then
+    stash_paths+=("public/data/$game")
+  fi
+done
+git stash push -m "TruckNav automatic generated map backup" -- "${stash_paths[@]}"
 
 sprite_stash="$(git rev-parse -q --verify refs/stash || true)"
 if [[ "$sprite_stash" == "$previous_stash" ]]; then
@@ -83,13 +104,13 @@ restore_sprite_stash() {
   [[ -n "$sprite_stash" ]] || return 0
 
   if [[ "$(git rev-parse -q --verify refs/stash || true)" != "$sprite_stash" ]]; then
-    echo "Stash order changed; sprite backup retained." >&2
+    echo "Stash order changed; generated map backup retained." >&2
     return 7
   fi
 
-  echo "Restoring local sprite files..."
+  echo "Restoring local generated map and sprite files..."
   if ! git stash pop --index 'stash@{0}'; then
-    echo "Sprite restore failed; backup retained in Git stash." >&2
+    echo "Generated map restore failed; backup retained in Git stash." >&2
     return 7
   fi
 
@@ -97,6 +118,14 @@ restore_sprite_stash() {
 }
 
 trap 'restore_sprite_stash' EXIT
+
+# There is an actual update. Stop the running dashboard and telemetry before
+# changing files so the Nuxt dev process cannot reload an inconsistent tree.
+# The update job is detached by the Linux API, so it continues after the web
+# dashboard disconnects. Never automatically relaunch after the update.
+echo
+echo "Update found. Stopping TruckNav web app and telemetry (ATS/ETS2 keep running)..."
+bash "$REPO_ROOT/scripts/linux/stop-trucknav.sh"
 
 echo "Fast-forwarding to ${target_head:0:10}..."
 git merge --ff-only "$target_head"
@@ -131,4 +160,5 @@ echo
 echo "TruckNav Linux updated successfully."
 echo "Old commit: ${old_head:0:10}"
 echo "New commit: ${target_head:0:10}"
-echo "Restart or reload TruckNav to use the updated files."
+echo "TruckNav web app and telemetry are stopped. They will not restart automatically."
+echo "To launch again: bash scripts/linux/launch-trucknav.sh ats"
