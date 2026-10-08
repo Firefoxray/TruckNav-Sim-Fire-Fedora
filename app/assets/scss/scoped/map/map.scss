@@ -95,3 +95,16 @@
 .heading-icon {
     transform: rotate(-45deg);
 }
+
+
+.map-legend-wrapper {
+    position: absolute;
+    top: calc($game-info-bar-height + 1.8rem);
+    left: calc(10px + var(--hud-btn-size) + 2.2rem);
+    z-index: 20;
+    pointer-events: auto;
+}
+
+.left-buttons .green-icon {
+    color: $green-color;
+}
