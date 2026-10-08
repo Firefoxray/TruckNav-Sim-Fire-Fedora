@@ -290,7 +290,8 @@ export const useRouteController = (
             // A newer destination or a cancelled route invalidates this result.
             if (calculationGeneration !== routeGeneration) return;
             if (waypointSnapshot !== JSON.stringify(waypointList.value)) {
-                queuedRouteRequest = {
+                // Keep the newest request if another click already queued it.
+                queuedRouteRequest ??= {
                     truckCoords: [...truckCoords],
                     truckHeading,
                     sdkScale,
