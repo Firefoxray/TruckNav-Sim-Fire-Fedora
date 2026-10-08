@@ -420,6 +420,16 @@ function applyMapStyle() {
         map.value.setPaintProperty(layer, property as any, value);
     };
 
+    // Real relief is optional; it becomes visible only after the terrain
+    // PMTiles have been generated from parsed ATS elevation samples.
+    if (map.value.getLayer("terrain-elevation")) {
+        map.value.setLayoutProperty(
+            "terrain-elevation",
+            "visibility",
+            style === "terrain" ? "visible" : "none",
+        );
+    }
+
     setPaint("background", "background-color", palette.background);
     setPaint("water", "fill-color", palette.water);
     setPaint("water", "fill-opacity", palette.waterOpacity);
