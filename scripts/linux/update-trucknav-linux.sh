@@ -119,6 +119,14 @@ restore_sprite_stash() {
 
 trap 'restore_sprite_stash' EXIT
 
+# There is an actual update. Stop the running dashboard and telemetry before
+# changing files so the Nuxt dev process cannot reload an inconsistent tree.
+# The update job is detached by the Linux API, so it continues after the web
+# dashboard disconnects. Never automatically relaunch after the update.
+echo
+echo "Update found. Stopping TruckNav web app and telemetry (ATS/ETS2 keep running)..."
+bash "$REPO_ROOT/scripts/linux/stop-trucknav.sh"
+
 echo "Fast-forwarding to ${target_head:0:10}..."
 git merge --ff-only "$target_head"
 
@@ -152,4 +160,5 @@ echo
 echo "TruckNav Linux updated successfully."
 echo "Old commit: ${old_head:0:10}"
 echo "New commit: ${target_head:0:10}"
-echo "Restart or reload TruckNav to use the updated files."
+echo "TruckNav web app and telemetry are stopped. They will not restart automatically."
+echo "To launch again: bash scripts/linux/launch-trucknav.sh ats"
