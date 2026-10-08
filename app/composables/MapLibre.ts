@@ -291,6 +291,29 @@ export async function initializeMap(
                 },
                 "lines",
             );
+            // Fine elevation boundaries are useful at regional zoom but too
+            // noisy at a whole-country view.
+            map.addLayer(
+                {
+                    id: "terrain-elevation-lines",
+                    type: "line",
+                    source: "terrain-elevation",
+                    "source-layer": "contours",
+                    minzoom: 8,
+                    layout: {
+                        visibility:
+                            activeSettings.value.mapStyle === "terrain"
+                                ? "visible"
+                                : "none",
+                    },
+                    paint: {
+                        "line-color": "#515c47",
+                        "line-opacity": 0.3,
+                        "line-width": 0.6,
+                    },
+                },
+                "lines",
+            );
         }
 
         // WATER
