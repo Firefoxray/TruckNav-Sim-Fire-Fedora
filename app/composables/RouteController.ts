@@ -49,6 +49,13 @@ export const useRouteController = (
 
     const isCalculating = ref(false);
     const routeFound = ref<boolean | null>(null);
+    let routeGeneration = 0;
+    let queuedRouteRequest: {
+        truckCoords: [number, number];
+        truckHeading: number;
+        sdkScale: number;
+        avgSpeed: number;
+    } | null = null;
 
     const currentRouteIndex = ref(0);
     const isWorkerReady = ref(false);
@@ -217,14 +224,27 @@ export const useRouteController = (
         if (
             waypointList.value.length === 0 ||
             adjacency.size === 0 ||
-            isCalculating.value ||
             !isWorkerReady.value
         ) {
             return;
         }
 
+        // A map click/removal during an active worker request must not be
+        // discarded. Recalculate the latest waypoint list once it finishes.
+        if (isCalculating.value) {
+            queuedRouteRequest = {
+                truckCoords: [...truckCoords],
+                truckHeading,
+                sdkScale,
+                avgSpeed,
+            };
+            return;
+        }
+
         isCalculating.value = true;
         routeFound.value = null;
+        const calculationGeneration = routeGeneration;
+        const waypointSnapshot = JSON.stringify(waypointList.value);
 
         try {
             const startConfig = findBestStartConfiguration(
@@ -266,6 +286,18 @@ export const useRouteController = (
                 sdkScale,
                 avgSpeed,
             );
+
+            // A newer destination or a cancelled route invalidates this result.
+            if (calculationGeneration !== routeGeneration) return;
+            if (waypointSnapshot !== JSON.stringify(waypointList.value)) {
+                queuedRouteRequest = {
+                    truckCoords: [...truckCoords],
+                    truckHeading,
+                    sdkScale,
+                    avgSpeed,
+                };
+                return;
+            }
 
             if (result) {
                 isRouteActive.value = true;
@@ -341,6 +373,16 @@ export const useRouteController = (
             isRouteActive.value = false;
         } finally {
             isCalculating.value = false;
+            const pending = queuedRouteRequest;
+            queuedRouteRequest = null;
+            if (pending && waypointList.value.length > 0) {
+                void handleMultiRouteCalculation(
+                    pending.truckCoords,
+                    pending.truckHeading,
+                    pending.sdkScale,
+                    pending.avgSpeed,
+                );
+            }
         }
     }
 
@@ -1153,6 +1195,8 @@ export const useRouteController = (
     };
 
     function clearRouteState() {
+        routeGeneration++;
+        queuedRouteRequest = null;
         if (!map.value) return;
 
         deleteMapLibreData(map.value, "route-line");
